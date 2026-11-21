@@ -21,7 +21,8 @@
   "host_permissions": [
     "<all_urls>",
     "*://*.youtube.com/*",
-    "http://127.0.0.1:8000/*"
+    "http://127.0.0.1:8000/*",
+    "https://*.onrender.com/*"
   ],
   "content_scripts": [
     {

@@ -1,4 +1,30 @@
+// Tập trung hóa URL Backend: đổi sang https://<ten-service>.onrender.com khi deploy lên Render
 const API_BASE_URL = 'http://127.0.0.1:8000';
+const BACKEND_FETCH_TIMEOUT_MS = 65000;
+
+async function fetchBackendWithTimeout(pathOrUrl, options = {}, timeoutMs = BACKEND_FETCH_TIMEOUT_MS) {
+  const targetUrl = /^https?:\/\//i.test(pathOrUrl) ? pathOrUrl : `${API_BASE_URL}${pathOrUrl}`;
+  const controller = new AbortController();
+  const externalSignal = options.signal;
+  const onExternalAbort = () => controller.abort(externalSignal?.reason);
+  if (externalSignal) {
+    if (externalSignal.aborted) {
+      controller.abort(externalSignal.reason);
+    } else {
+      externalSignal.addEventListener('abort', onExternalAbort, { once: true });
+    }
+  }
+  const timeoutId = setTimeout(
+    () => controller.abort(new Error(`Máy chủ đang khởi động (Cold Start) hoặc phản hồi quá ${Math.round(timeoutMs / 1000)} giây.`)),
+    timeoutMs
+  );
+  try {
+    return await fetch(targetUrl, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timeoutId);
+    if (externalSignal) externalSignal.removeEventListener('abort', onExternalAbort);
+  }
+}
 const THEME_STORAGE_KEY = 'smartStudyTheme';
 const DEFAULT_THEME_ID = 'tech-ocean';
 const SIDEBAR_THEMES = [
@@ -1118,7 +1144,7 @@ function showAppView(viewId) {
   }
 
   async function exportTemplateDocx(templateType, filename, data) {
-    const response = await fetch('http://127.0.0.1:8000/api/export-template', {
+    const response = await fetchBackendWithTimeout('/api/export-template', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ template_type: templateType, filename, data })
@@ -3526,7 +3552,7 @@ function formatSummaryMarkdown(text) {
     .replace(/\r?\n/g, '<br>');
 }
 
-const BACKEND_API_ORIGIN = 'http://127.0.0.1:8000';
+const BACKEND_API_ORIGIN = API_BASE_URL;
 const MAX_STUDY_HISTORY = 10;
 let currentQuizSession = null;
 
@@ -3536,7 +3562,7 @@ async function exportQuizToDocx(summary, quizList, buttonEl) {
   buttonEl.textContent = '⏳ Đang xuất file Word (.docx)...';
 
   try {
-    const response = await fetch(`${BACKEND_API_ORIGIN}/api/export-docx`, {
+    const response = await fetchBackendWithTimeout('/api/export-docx', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -6098,19 +6124,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     try {
       const { geminiApiKey } = await chrome.storage.local.get('geminiApiKey');
       const cleanKey = String(geminiApiKey || '').trim();
-      if (!cleanKey) {
-        const msg = 'Vui lòng vào Cài đặt API Key để nhập Gemini API Key trước!';
-        if (copilotResultContainer) copilotResultContainer.textContent = `⚠️ ${msg}`;
-        setMascotStatus(msg, 'error');
-        return;
-      }
+      const copilotHeaders = { 'Content-Type': 'application/json' };
+      if (cleanKey) copilotHeaders['X-Gemini-Api-Key'] = cleanKey;
 
-      const response = await fetch(`${API_BASE_URL}/api/selection-copilot`, {
+      const response = await fetchBackendWithTimeout('/api/selection-copilot', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Gemini-Api-Key': cleanKey
-        },
+        headers: copilotHeaders,
         body: JSON.stringify({
           text: cleanText,
           action,
@@ -6122,6 +6141,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
       const data = await response.json().catch(() => null);
       if (!response.ok) {
+        if (response.status === 429 || isQuotaOrRateLimitError(data?.detail)) {
+          throw new Error(QUOTA_FALLBACK_GUIDANCE);
+        }
         const detail = data?.detail || `HTTP ${response.status}: ${response.statusText}`;
         throw new Error(detail);
       }
@@ -6186,6 +6208,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   void consumePendingSelectionTask();
+
+  const QUOTA_FALLBACK_GUIDANCE =
+    'API Key hiện tại đã hết lượt dùng / chạm giới hạn (Rate Limit / Quota). Vui lòng mở menu ☰ → Cài đặt API Key để nhập Gemini API Key cá nhân của bạn và tiếp tục sử dụng.';
+
+  function isQuotaOrRateLimitError(message) {
+    return /(429|quota|rate\s*limit|resource_exhausted|hết\s*lượt|giới\s*hạn)/i.test(String(message || ''));
+  }
 
   function isBackendConnectionError(error) {
     const msg = (error?.message || '').toLowerCase();
@@ -6349,25 +6378,29 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     try {
       const { geminiApiKey } = await chrome.storage.local.get('geminiApiKey');
-      if (!geminiApiKey) {
-        setMascotStatus('Vui lòng vào Cài đặt API Key trước.', 'error');
-        return;
-      }
+      const cleanKey = String(geminiApiKey || '').trim();
 
       const formData = new FormData();
       formData.append('file', selectedFile);
-      formData.append('api_key', geminiApiKey);
+      if (cleanKey) formData.append('api_key', cleanKey);
       formData.append('num_questions', numQuestions);
       formData.append('difficulty', difficulty);
 
-      const response = await fetch(`${BACKEND_BASE_URL}/api/process-file`, {
+      const fileHeaders = {};
+      if (cleanKey) fileHeaders['X-Gemini-Api-Key'] = cleanKey;
+
+      const response = await fetchBackendWithTimeout('/api/process-file', {
         method: 'POST',
+        headers: fileHeaders,
         body: formData
       });
 
       const data = await response.json().catch(() => null);
 
       if (!response.ok) {
+        if (response.status === 429 || isQuotaOrRateLimitError(data?.detail)) {
+          throw new Error(QUOTA_FALLBACK_GUIDANCE);
+        }
         const detail = data?.detail || `HTTP ${response.status}: ${response.statusText}`;
         throw new Error(detail);
       }
@@ -6441,13 +6474,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         const { geminiApiKey } = await chrome.storage.local.get('geminiApiKey');
-        if (!geminiApiKey) {
-          setMascotStatus('Vui lòng vào Cài đặt API Key trước.', 'error');
-          return;
-        }
+        const cleanKey = String(geminiApiKey || '').trim();
 
         const controller = new AbortController();
-        timeoutId = setTimeout(() => controller.abort(), 60000);
+        timeoutId = setTimeout(() => controller.abort(), BACKEND_FETCH_TIMEOUT_MS);
         const [extraction] = await chrome.scripting.executeScript({
           target: { tabId: currentTab.id },
           func: () => {
@@ -6501,11 +6531,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             : 'Đang tạo bản tóm tắt và trích xuất từ khóa tiếng Anh...',
           'loading'
         );
-        const response = await fetch(`${BACKEND_BASE_URL}/api/process-url`, {
+        const urlHeaders = { 'Content-Type': 'application/json' };
+        if (cleanKey) urlHeaders['X-Gemini-Api-Key'] = cleanKey;
+
+        const response = await fetchBackendWithTimeout('/api/process-url', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
+          headers: urlHeaders,
           body: JSON.stringify({
             url: currentUrl,
             title: currentTab.title || currentUrl,
@@ -6513,13 +6544,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             summary_level: summaryLevelSelect?.value || 'medium',
             mode: 'summary_only',
             is_selection: isSelection,
-            api_key: geminiApiKey,
+            api_key: cleanKey,
           }),
           signal: controller.signal
         });
 
         const data = await response.json().catch(() => null);
         if (!response.ok) {
+          if (response.status === 429 || isQuotaOrRateLimitError(data?.detail)) {
+            throw new Error(QUOTA_FALLBACK_GUIDANCE);
+          }
           const detail = data?.detail || `HTTP ${response.status}: ${response.statusText}`;
           throw new Error(detail);
         }
@@ -8119,7 +8153,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const scrollSpeedSlider = document.getElementById('scroll-speed-slider');
   const scrollSpeedBadge = document.getElementById('scroll-speed-badge');
   const clearCookiesReloadBtn = document.getElementById('clear-cookies-reload-btn');
-  const BACKEND_BASE_URL = 'http://127.0.0.1:8000';
+  const BACKEND_BASE_URL = API_BASE_URL;
   const pdfScrollSpeeds = {
     1: { label: 'Chậm', scrollDelayMs: 800 },
     2: { label: 'Hơi chậm', scrollDelayMs: 500 },
@@ -8347,7 +8381,7 @@ document.addEventListener('DOMContentLoaded', () => {
           docData.validPagesCount || docData.pagesCount || safePagesStructured.length || safePagesText.length;
         setMascotStatus(`Đã thu thập ${validExportPages} trang; đang kết xuất file Word...`, 'loading');
 
-        const response = await fetch(`${BACKEND_BASE_URL}/api/export-web-docx`, {
+        const response = await fetchBackendWithTimeout('/api/export-web-docx', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'

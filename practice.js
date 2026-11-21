@@ -1,5 +1,6 @@
 import {
   API_BASE_URL,
+  BACKEND_FETCH_TIMEOUT_MS,
   OPTION_LETTERS,
   VocabStorageManager,
   vocabStorageManager,
@@ -67,8 +68,18 @@ const CLIENT_GEMINI_MODELS = [
   'gemini-flash-latest'
 ];
 const ENRICH_BATCH_SIZE = 5;
-const ENRICH_TIMEOUT_MS = 45000;
-const FETCH_TIMEOUT_MS = 45000;
+const ENRICH_TIMEOUT_MS = BACKEND_FETCH_TIMEOUT_MS;
+const FETCH_TIMEOUT_MS = BACKEND_FETCH_TIMEOUT_MS;
+const QUOTA_FALLBACK_GUIDANCE =
+  '⚠️ API Key hiện tại đã hết lượt dùng / chạm giới hạn (Rate Limit / Quota). Vui lòng vào Side Panel → Cài đặt API Key để nhập Gemini API Key cá nhân của bạn và tiếp tục sử dụng.';
+const isQuotaOrRateLimitError = (msg) =>
+  /(429|quota|rate\s*limit|resource_exhausted|hết\s*lượt|giới\s*hạn)/i.test(String(msg || ''));
+const buildApiHeaders = (apiKey) => {
+  const headers = { 'Content-Type': 'application/json' };
+  const clean = String(apiKey || '').trim();
+  if (clean) headers['X-Gemini-Api-Key'] = clean;
+  return headers;
+};
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 let allVocabCards = [];
@@ -608,12 +619,6 @@ async function generateOnDemandQuizExplanation() {
 
   const { geminiApiKey } = await chrome.storage.local.get('geminiApiKey').catch(() => ({}));
   const cleanKey = String(geminiApiKey || '').trim();
-  if (!cleanKey) {
-    explanationEl.textContent =
-      '⚠️ Vui lòng cài đặt Gemini API Key ở thanh bên (Side Panel) để AI phân tích đáp án & tạo Mẹo ghi nhớ.';
-    explanationEl.hidden = false;
-    return;
-  }
 
   const options = normalizePracticeOptions(getSafeRawOptions(item));
   const correctOption = result?.correct || findCorrectOption(item, options);
@@ -643,33 +648,39 @@ Chỉ trả về JSON hợp lệ theo đúng cấu trúc:
 }`;
 
   let formattedExplanation = '';
+  let quotaErrorMsg = '';
 
-  try {
-    const parsed = await callClientGeminiJsonWithFallback(prompt, cleanKey);
-    if (parsed && typeof parsed === 'object') {
-      const parts = [];
-      if (parsed.why_correct) {
-        parts.push(`✅ Vì sao đáp án ${correctOption?.letter || ''} đúng: ${String(parsed.why_correct).trim()}`);
+  if (cleanKey) {
+    try {
+      const parsed = await callClientGeminiJsonWithFallback(prompt, cleanKey);
+      if (parsed && typeof parsed === 'object') {
+        const parts = [];
+        if (parsed.why_correct) {
+          parts.push(`✅ Vì sao đáp án ${correctOption?.letter || ''} đúng: ${String(parsed.why_correct).trim()}`);
+        }
+        if (parsed.why_others_wrong) {
+          parts.push(`❌ Phân tích phương án nhiễu/sai: ${String(parsed.why_others_wrong).trim()}`);
+        }
+        if (parsed.memory_cue) {
+          parts.push(`💡 Mẹo ghi nhớ (Memory Cue): ${String(parsed.memory_cue).trim()}`);
+        }
+        formattedExplanation = parts.join('\n\n').trim();
       }
-      if (parsed.why_others_wrong) {
-        parts.push(`❌ Phân tích phương án nhiễu/sai: ${String(parsed.why_others_wrong).trim()}`);
+    } catch (clientErr) {
+      if (isQuotaOrRateLimitError(clientErr?.message)) {
+        quotaErrorMsg = QUOTA_FALLBACK_GUIDANCE;
       }
-      if (parsed.memory_cue) {
-        parts.push(`💡 Mẹo ghi nhớ (Memory Cue): ${String(parsed.memory_cue).trim()}`);
-      }
-      formattedExplanation = parts.join('\n\n').trim();
+      console.warn('Thử fallback qua Backend /api/selection-copilot cho giải thích câu hỏi:', clientErr);
     }
-  } catch (clientErr) {
-    console.warn('Thử fallback qua Backend /api/selection-copilot cho giải thích câu hỏi:', clientErr);
+  }
+
+  if (!formattedExplanation) {
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
       const response = await fetch(BACKEND_SELECTION_COPILOT_URL, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Gemini-Api-Key': cleanKey
-        },
+        headers: buildApiHeaders(cleanKey),
         signal: controller.signal,
         body: JSON.stringify({
           text: `Giải thích câu trắc nghiệm:\n${String(item.question || '').trim()}\n${optionsSummary}\nĐáp án đúng: ${correctOption ? `${correctOption.letter}. ${correctOption.text}` : ''}\nNgười học chọn: ${selectedOption ? `${selectedOption.letter}. ${selectedOption.text}` : ''}\nHãy nêu: 1) Vì sao đáp án đúng hợp lý; 2) Vì sao phương án khác sai; 3) Mẹo ghi nhớ (Memory Cue).`,
@@ -681,9 +692,15 @@ Chỉ trả về JSON hợp lệ theo đúng cấu trúc:
       });
       clearTimeout(timeoutId);
       const data = await response.json().catch(() => null);
-      if (response.ok && data) {
-        const summary = String(data.summary || data.explanation || '').trim();
-        const points = Array.isArray(data.key_points) ? data.key_points.map((p) => `• ${p}`).join('\n') : '';
+      if (response.status === 429 || isQuotaOrRateLimitError(data?.detail)) {
+        quotaErrorMsg = QUOTA_FALLBACK_GUIDANCE;
+      } else if (response.ok && data) {
+        const summary = String(data.summary || data.explanation || data.explanation_vi || '').trim();
+        const points = Array.isArray(data.key_points)
+          ? data.key_points.map((p) => `• ${p}`).join('\n')
+          : Array.isArray(data.key_takeaways)
+            ? data.key_takeaways.map((p) => `• ${p}`).join('\n')
+            : '';
         const example = String(data.example || '').trim();
         formattedExplanation = [
           summary ? `✅ Phân tích: ${summary}` : '',
@@ -704,8 +721,12 @@ Chỉ trả về JSON hợp lệ theo đúng cấu trúc:
     explanationEl.textContent = formattedExplanation;
     explanationEl.hidden = false;
     if (aiWrap) aiWrap.hidden = true;
+  } else if (quotaErrorMsg) {
+    explanationEl.textContent = quotaErrorMsg;
+    explanationEl.hidden = false;
   } else {
-    explanationEl.textContent = '⚠️ Không thể tạo giải thích AI lúc này. Bạn có thể bấm thử lại.';
+    explanationEl.textContent =
+      '⚠️ Không thể tạo giải thích AI lúc này. Nếu server hết lượt dùng, hãy nhập Gemini API Key cá nhân tại Side Panel → Cài đặt API Key.';
     explanationEl.hidden = false;
   }
 
@@ -1602,11 +1623,6 @@ async function evaluateUserSentence() {
 
   const { geminiApiKey } = await chrome.storage.local.get('geminiApiKey').catch(() => ({}));
   const cleanKey = String(geminiApiKey || '').trim();
-  if (!cleanKey) {
-    feedbackEl.textContent = '⚠️ Vui lòng vào Cài đặt API Key ở Side Panel trước khi dùng AI Sửa đặt câu.';
-    feedbackEl.hidden = false;
-    return;
-  }
 
   const wordText = getVocabWord(item);
   const posText = getVocabPos(item);
@@ -1621,13 +1637,10 @@ async function evaluateUserSentence() {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
-    // Ưu tiên gọi Backend POST ${API_BASE_URL}/api/grade-sentence
+    // Ưu tiên gọi Backend POST ${API_BASE_URL}/api/grade-sentence (tự fallback sang GEMINI_API_KEY env trên server nếu người dùng chưa nhập key)
     const response = await fetch(BACKEND_GRADE_SENTENCE_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Gemini-Api-Key': cleanKey
-      },
+      headers: buildApiHeaders(cleanKey),
       signal: controller.signal,
       body: JSON.stringify({
         word: wordText,
@@ -1644,15 +1657,27 @@ async function evaluateUserSentence() {
       return;
     }
 
-    // Nếu Backend chưa hỗ trợ route /api/grade-sentence (404) hoặc lỗi 5xx, fallback sang danh sách model sống ở client
+    const errData = await response.json().catch(() => null);
+    if (response.status === 429 || isQuotaOrRateLimitError(errData?.detail)) {
+      feedbackEl.textContent = QUOTA_FALLBACK_GUIDANCE;
+      return;
+    }
+
+    // Nếu Backend chưa hỗ trợ route /api/grade-sentence (404) hoặc lỗi 5xx, fallback sang danh sách model sống ở client nếu có key cá nhân
     if (![404, 502, 503, 504].includes(response.status)) {
-      const errData = await response.json().catch(() => null);
       throw new Error(errData?.detail || `HTTP ${response.status}`);
     }
   } catch (backendError) {
     console.warn('Chuyển sang chấm câu trực tiếp qua danh sách model sống ở client:', backendError.message);
   } finally {
     clearTimeout(timeoutId);
+  }
+
+  if (!cleanKey) {
+    feedbackEl.textContent =
+      '⚠️ Không thể chấm câu qua máy chủ lúc này. Vui lòng vào Side Panel → Cài đặt API Key để nhập Gemini API Key cá nhân.';
+    if (checkBtn) checkBtn.disabled = false;
+    return;
   }
 
   try {
@@ -1934,12 +1959,6 @@ async function enrichVocabInBatches(forceAll = false) {
 
   const { geminiApiKey } = await chrome.storage.local.get('geminiApiKey').catch(() => ({}));
   const cleanKey = String(geminiApiKey || '').trim();
-  if (!cleanKey) {
-    if (forceAll) {
-      setEnrichStatus('Vui lòng cài đặt Gemini API Key để tạo ví dụ & minh họa ngữ nghĩa.', true);
-    }
-    return;
-  }
 
   const pendingIndices = [];
   allVocabCards.forEach((item, index) => {
@@ -1996,13 +2015,11 @@ async function enrichVocabInBatches(forceAll = false) {
         ENRICH_TIMEOUT_MS
       );
 
+      let quotaReached = false;
       try {
         const response = await fetch(BACKEND_ENRICH_URL, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Gemini-Api-Key': cleanKey
-          },
+          headers: buildApiHeaders(cleanKey),
           signal: controller.signal,
           body: JSON.stringify({
             items: batchPayload,
@@ -2012,6 +2029,10 @@ async function enrichVocabInBatches(forceAll = false) {
 
         if (!response.ok) {
           const errData = await response.json().catch(() => null);
+          if (response.status === 429 || isQuotaOrRateLimitError(errData?.detail)) {
+            quotaReached = true;
+            throw new Error(QUOTA_FALLBACK_GUIDANCE);
+          }
           throw new Error(errData?.detail || `HTTP ${response.status}`);
         }
 
@@ -2054,6 +2075,10 @@ async function enrichVocabInBatches(forceAll = false) {
           renderFlashcard(false);
         }
       } catch (batchError) {
+        if (quotaReached || isQuotaOrRateLimitError(batchError?.message)) {
+          setEnrichStatus(QUOTA_FALLBACK_GUIDANCE, true);
+          return;
+        }
         // Nếu 1 lô gặp lỗi hoặc timeout, bỏ qua an toàn lô đó và tiếp tục các lô từ còn lại
         console.warn(`Bỏ qua lô từ vựng (${batchIndices.join(', ')}) do lỗi:`, batchError);
       } finally {
@@ -2439,13 +2464,6 @@ async function generateAndRenderStory(forceRegenerate = false) {
   const { geminiApiKey } = await chrome.storage.local.get('geminiApiKey').catch(() => ({}));
   const cleanKey = String(geminiApiKey || '').trim();
 
-  if (!cleanKey) {
-    currentStoryData = buildFallbackDialogueFromCards(pickedCards, pickedWords, topicName);
-    setStoryStatus('💡 Đang hiển thị hội thoại tương tác mẫu từ bộ thẻ hiện tại (cài đặt API Key để AI sáng tạo tình huống mới).', true);
-    renderStoryView();
-    return;
-  }
-
   isGeneratingStory = true;
   setPracticeLogoProcessing(true);
   const regenBtn = document.getElementById('story-regenerate-btn');
@@ -2461,10 +2479,7 @@ async function generateAndRenderStory(forceRegenerate = false) {
   try {
     const response = await fetch(BACKEND_SYNTHESIZE_STORY_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Gemini-Api-Key': cleanKey
-      },
+      headers: buildApiHeaders(cleanKey),
       signal: controller.signal,
       body: JSON.stringify({
         words: pickedWords.map(({ word, pos, meaning }) => ({ word, pos, meaning })),
@@ -2474,6 +2489,9 @@ async function generateAndRenderStory(forceRegenerate = false) {
     });
 
     const data = await response.json().catch(() => null);
+    if (response.status === 429 || isQuotaOrRateLimitError(data?.detail)) {
+      throw new Error(QUOTA_FALLBACK_GUIDANCE);
+    }
     if (!response.ok || !Array.isArray(data?.dialogue) || !data.dialogue.length) {
       throw new Error(data?.detail || `HTTP ${response.status}`);
     }
@@ -2492,7 +2510,12 @@ async function generateAndRenderStory(forceRegenerate = false) {
   } catch (error) {
     console.warn('Chuyển sang kịch bản hội thoại mẫu tương tác (buildFallbackDialogueFromCards):', error);
     currentStoryData = buildFallbackDialogueFromCards(pickedCards, pickedWords, topicName);
-    setStoryStatus('💡 Đã tự động dựng kịch bản hội thoại tương tác từ bộ thẻ hiện tại để bạn luyện nghe, Cloze Mode & Roleplay ngay!', true);
+    setStoryStatus(
+      isQuotaOrRateLimitError(error?.message)
+        ? QUOTA_FALLBACK_GUIDANCE
+        : '💡 Đã tự động dựng kịch bản hội thoại tương tác từ bộ thẻ hiện tại để bạn luyện nghe, Cloze Mode & Roleplay ngay!',
+      true
+    );
     const feedbackEl = document.getElementById('story-roleplay-feedback');
     if (feedbackEl) feedbackEl.hidden = true;
     const roleplayInput = document.getElementById('story-roleplay-input');
@@ -2542,11 +2565,6 @@ async function evaluateStoryRoleplayResponse() {
 
   const { geminiApiKey } = await chrome.storage.local.get('geminiApiKey').catch(() => ({}));
   const cleanKey = String(geminiApiKey || '').trim();
-  if (!cleanKey) {
-    feedbackEl.textContent = '⚠️ Vui lòng cài đặt Gemini API Key ở Side Panel trước.';
-    feedbackEl.hidden = false;
-    return;
-  }
 
   const targetWordsList = (currentStoryData.pickedWords || []).map((w) => w.word).join(', ');
   const meaningsList = (currentStoryData.pickedWords || [])
@@ -2560,10 +2578,7 @@ async function evaluateStoryRoleplayResponse() {
   try {
     const response = await fetch(BACKEND_GRADE_SENTENCE_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Gemini-Api-Key': cleanKey
-      },
+      headers: buildApiHeaders(cleanKey),
       body: JSON.stringify({
         word: targetWordsList,
         pos: 'roleplay',
@@ -2574,12 +2589,18 @@ async function evaluateStoryRoleplayResponse() {
       })
     });
     const data = await response.json().catch(() => null);
+    if (response.status === 429 || isQuotaOrRateLimitError(data?.detail)) {
+      feedbackEl.textContent = QUOTA_FALLBACK_GUIDANCE;
+      return;
+    }
     if (!response.ok) {
       throw new Error(data?.detail || `HTTP ${response.status}`);
     }
     feedbackEl.textContent = formatGradeSentenceFeedback(data);
   } catch (error) {
-    feedbackEl.textContent = `❌ Không thể chấm phản xạ lúc này: ${error.message}`;
+    feedbackEl.textContent = isQuotaOrRateLimitError(error?.message)
+      ? QUOTA_FALLBACK_GUIDANCE
+      : `❌ Không thể chấm phản xạ lúc này: ${error.message}`;
   } finally {
     if (checkBtn) checkBtn.disabled = false;
   }
