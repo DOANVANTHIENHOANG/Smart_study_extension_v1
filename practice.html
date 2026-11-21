@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Phòng luyện tập | Smart Study</title>
+  <link rel="stylesheet" href="variables.css">
+  <link rel="stylesheet" href="practice.css">
+</head>
+<body>
+  <header class="practice-header">
+    <div class="practice-header-brand">
+      <div id="practice-logo-slot" class="brand-logo-slot" title="Smart Study AI Copilot">
+        <img id="practice-logo-img" class="brand-logo-img" src="assets/logo_extension.png" alt="Logo Smart Study" width="28" height="28">
+      </div>
+      <div class="practice-header-title">
+        <span class="practice-eyebrow">SMART STUDY • PHÒNG LUYỆN TẬP</span>
+        <h1 id="practice-title">Đang tải bộ đề...</h1>
+      </div>
+    </div>
+    <div class="practice-header-tools">
+      <span id="practice-progress" class="practice-progress">Câu 0 / 0</span>
+      <div class="practice-mode-switch" role="group" aria-label="Chế độ luyện tập">
+        <button type="button" class="mode-switch-btn" data-mode="quiz">
+          <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 11 3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          <span>Thi Trắc nghiệm</span>
+        </button>
+        <button type="button" class="mode-switch-btn" data-mode="flashcard">
+          <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+          <span>Thẻ ngữ cảnh</span>
+        </button>
+        <button type="button" class="mode-switch-btn" data-mode="dictation" hidden>
+          <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 16h8"/></svg>
+          <span>Nghe &amp; Gõ điền từ</span>
+        </button>
+        <button type="button" class="mode-switch-btn" data-mode="sentence" hidden>
+          <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+          <span>AI Sửa đặt câu</span>
+        </button>
+        <button type="button" class="mode-switch-btn" data-mode="story" hidden>
+          <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <span>Hội thoại thực chiến</span>
+        </button>
+      </div>
+      <div class="theme-picker-wrap">
+        <select id="practice-theme-selector" class="theme-picker-select" aria-label="Chọn chủ đề giao diện"></select>
+      </div>
+      <button type="button" id="practice-weak-retest-btn" class="weak-retest-btn" title="Luyện lại các câu hay sai theo trọng số">🎯 Ôn câu hay sai (0)</button>
+      <button type="button" id="practice-exit-btn" class="practice-exit-btn" aria-label="Thoát phòng luyện tập">✕</button>
+    </div>
+  </header>
+
+  <main class="practice-main">
+    <details id="analytics-dashboard-details" class="analytics-dashboard">
+      <summary class="analytics-summary">
+        <span class="analytics-summary-title">📊 Tổng quan Tiến độ Học tập</span>
+        <span id="analytics-summary-pill" class="analytics-summary-pill">🔥 0 ngày • 0 từ Box 4</span>
+      </summary>
+      <div class="analytics-body">
+        <div class="analytics-kpi-grid">
+          <div class="analytics-kpi-card">
+            <span class="analytics-kpi-label">Chuỗi học tập</span>
+            <strong id="kpi-streak" class="analytics-kpi-value">🔥 0 ngày</strong>
+          </div>
+          <div class="analytics-kpi-card">
+            <span class="analytics-kpi-label">Từ vựng thành thạo (Box 4)</span>
+            <strong id="kpi-mastered" class="analytics-kpi-value">0 từ</strong>
+          </div>
+          <div class="analytics-kpi-card">
+            <span class="analytics-kpi-label">Điểm Quiz trung bình</span>
+            <strong id="kpi-avg-score" class="analytics-kpi-value">--%</strong>
+          </div>
+        </div>
+        <div class="analytics-charts-grid">
+          <div class="analytics-chart-card">
+            <div class="analytics-chart-title">Phân bổ Từ vựng Leitner 4-Box</div>
+            <div id="svg-leitner-chart" class="analytics-svg-wrap"></div>
+          </div>
+          <div class="analytics-chart-card">
+            <div class="analytics-chart-title">Điểm 7 lần thi Quiz gần nhất (%)</div>
+            <div id="svg-quiz-history-chart" class="analytics-svg-wrap"></div>
+          </div>
+        </div>
+        <div class="analytics-actions">
+          <button type="button" id="export-roadmap-docx-btn" class="practice-secondary-btn">
+            <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5M12 15V3"/></svg>
+            <span>Xuất phiếu lộ trình ôn tập (.docx)</span>
+          </button>
+          <span id="analytics-export-status" class="analytics-export-status" hidden></span>
+        </div>
+      </div>
+    </details>
+    <div id="analytics-svg-tooltip" class="analytics-svg-tooltip" hidden></div>
+
+    <div id="vocab-mastery-progress-card" class="vocab-mastery-progress-card" role="region" aria-label="Tiến độ ghi nhớ từ vựng Leitner" hidden>
+      <div class="vocab-mastery-header">
+        <span class="vocab-mastery-title">📈 Tiến độ Sổ tay Từ vựng (Box 0 → Box 1 → Mastered)</span>
+        <div class="vocab-mastery-counts">
+          <span id="mastery-chip-box0" class="mastery-chip is-box0">🔴 Box 0 (Cần ôn): 0</span>
+          <span id="mastery-chip-box1" class="mastery-chip is-box1">🟡 Box 1–3 (Đang nhớ): 0</span>
+          <span id="mastery-chip-mastered" class="mastery-chip is-mastered">🟢 Mastered (Thuộc vững): 0</span>
+        </div>
+      </div>
+      <div class="vocab-mastery-bar-track" aria-hidden="true">
+        <div id="mastery-seg-box0" class="vocab-mastery-seg is-box0" style="width: 0%"></div>
+        <div id="mastery-seg-box1" class="vocab-mastery-seg is-box1" style="width: 0%"></div>
+        <div id="mastery-seg-mastered" class="vocab-mastery-seg is-mastered" style="width: 0%"></div>
+      </div>
+      <div class="vocab-cramming-toolbar">
+        <span class="vocab-cramming-label">⚡ Cramming Mode:</span>
+        <button type="button" id="cram-5min-btn" class="cram-mode-pill" title="Lọc ngẫu nhiên 8–10 thẻ chưa thuộc (ưu tiên Box 0) để ôn gọn trong 5 phút">⏱️ Ôn nhanh 5 phút (~8–10 thẻ)</button>
+        <button type="button" id="cram-cluster-btn" class="cram-mode-pill" title="Gom thẻ cần ôn theo từng cụm 6 thẻ cùng chủ đề/từ loại">🧩 Review theo cụm</button>
+        <select id="cram-cluster-select" class="cram-cluster-select" aria-label="Chọn cụm từ vựng cần ôn" hidden></select>
+        <button type="button" id="cram-exit-btn" class="cram-mode-pill is-reset" hidden>↩️ Xem tất cả thẻ</button>
+      </div>
+    </div>
+
+    <div id="practice-topic-bar" class="practice-topic-bar" role="region" aria-label="Lọc từ vựng theo chủ đề" hidden>
+      <span class="practice-topic-label">🏷️ Chủ đề:</span>
+      <div id="practice-topic-pills" class="practice-topic-pills"></div>
+    </div>
+
+    <section id="quiz-mode-panel" class="practice-panel" aria-live="polite">
+      <div id="weak-retest-controls" class="weak-retest-controls" hidden>
+        <div class="weak-filter-group">
+          <span class="weak-controls-badge">🎯 Quản lý câu hay sai</span>
+          <input type="search" id="weak-filter-input" class="weak-filter-input" placeholder="🔍 Lọc nhanh theo từ khóa hoặc chủ đề..." autocomplete="off">
+          <select id="weak-severity-select" class="weak-severity-select" aria-label="Lọc theo mức độ sai">
+            <option value="ALL">Tất cả câu sai</option>
+            <option value="HIGH">Sai nhiều lần (≥ 2 lần)</option>
+            <option value="SINGLE">Mới sai 1 lần</option>
+          </select>
+        </div>
+        <button type="button" id="weak-reset-all-btn" class="weak-reset-all-btn" title="Xóa sạch danh sách câu hỏi hay sai">🔄 Reset danh sách câu sai</button>
+      </div>
+      <article class="question-card">
+        <p id="practice-question-number" class="question-number">Câu 1</p>
+        <h2 id="practice-question">Đang tải câu hỏi...</h2>
+        <div id="practice-options" class="practice-options"></div>
+        <div id="practice-explanation" class="practice-explanation" hidden></div>
+        <div id="practice-ai-explain-wrap" class="practice-ai-explain-wrap" hidden>
+          <button type="button" id="practice-ai-explain-btn" class="practice-ai-explain-btn">💡 Giải thích vì sao đúng/sai</button>
+        </div>
+        <div class="question-actions">
+          <span id="practice-feedback" class="practice-feedback" role="status"></span>
+          <button type="button" id="practice-next-btn" class="practice-primary-btn" hidden>Câu tiếp theo ➡️</button>
+        </div>
+      </article>
+    </section>
+
+    <section id="flashcard-mode-panel" class="practice-panel" hidden>
+      <div class="flashcard-toolbar">
+        <select id="practice-card-jump" class="flashcard-jump-select" aria-label="Nhảy nhanh tới thẻ"></select>
+        <button type="button" id="flashcard-reverse-btn" class="practice-secondary-btn">
+          <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg>
+          <span>Đảo mặt (Việt → Anh)</span>
+        </button>
+        <button type="button" id="flashcard-enrich-btn" class="practice-secondary-btn">
+          <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>
+          <span>Tạo ví dụ &amp; Ảnh phác thảo</span>
+        </button>
+        <button type="button" id="extract-more-video-vocab-btn" class="practice-secondary-btn" hidden>
+          <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <span>Khai thác thêm từ mới</span>
+        </button>
+        <button type="button" id="export-unmastered-docx-btn" class="practice-secondary-btn">
+          <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5M12 15V3"/></svg>
+          <span>Xuất Word từ chưa thuộc (.docx)</span>
+        </button>
+        <span id="flashcard-enrich-status" class="flashcard-enrich-status" hidden></span>
+      </div>
+      <div class="flashcard-scene">
+        <article id="flashcard" class="flashcard" role="button" tabindex="0" aria-label="Lật thẻ">
+          <div class="flashcard-inner">
+            <section class="flashcard-face flashcard-front">
+              <div class="flashcard-top-meta">
+                <span id="flashcard-topic" class="flashcard-topic" hidden></span>
+                <span id="flashcard-source-badge" class="flashcard-source-badge" hidden></span>
+                <span id="flashcard-number" class="flashcard-number">Thẻ 1 / 1</span>
+              </div>
+              <h2 id="flashcard-question"></h2>
+              <span id="flashcard-pos" class="flashcard-pos" hidden></span>
+              <p id="flashcard-ipa" class="flashcard-ipa"></p>
+              <div class="flashcard-front-actions">
+                <button type="button" id="flashcard-speak-btn" class="speaker-btn-pill" aria-label="Phát âm từ vựng">🔊 Nghe từ</button>
+                <button type="button" id="flashcard-seek-yt-btn" class="speaker-btn-pill flashcard-yt-btn" hidden>🎬 Xem đoạn gốc</button>
+              </div>
+              <div id="flashcard-visual" class="flashcard-visual" hidden></div>
+              <span class="flashcard-hint">Bấm thẻ hoặc nhấn Space để lật • Nhấn R để nghe phát âm</span>
+            </section>
+            <section class="flashcard-face flashcard-back">
+              <span class="flashcard-back-label">ĐÁP ÁN / NGHĨA</span>
+              <h2 id="flashcard-answer"></h2>
+              <div id="flashcard-example-box" class="flashcard-example-box" hidden>
+                <span class="flashcard-example-label">💬 Câu ứng dụng thực tế</span>
+                <p id="flashcard-example-en" class="flashcard-example-en"></p>
+                <p id="flashcard-example-vi" class="flashcard-example-vi"></p>
+                <button type="button" id="flashcard-speak-example-btn" class="speaker-btn-pill is-compact" aria-label="Đọc câu ví dụ">🔊 Đọc câu ví dụ</button>
+              </div>
+              <p id="flashcard-details"></p>
+            </section>
+          </div>
+        </article>
+      </div>
+      <div class="flashcard-controls">
+        <button type="button" id="flashcard-prev-btn" class="practice-secondary-btn">⬅️ Thẻ trước</button>
+        <button type="button" id="flashcard-flip-btn" class="practice-primary-btn">🔄 Lật thẻ</button>
+        <button type="button" id="flashcard-next-btn" class="practice-secondary-btn">Thẻ tiếp ➡️</button>
+      </div>
+      <div class="flashcard-srs-actions">
+        <button type="button" id="srs-unknown-btn" class="srs-btn srs-btn-unknown">🔴 Chưa thuộc (Ôn lại)</button>
+        <button type="button" id="srs-known-btn" class="srs-btn srs-btn-known">🟢 Đã thuộc</button>
+      </div>
+      <p id="srs-status-toast" class="srs-status-toast" role="status" hidden></p>
+    </section>
+
+    <section id="dictation-mode-panel" class="practice-panel" hidden>
+      <article class="dictation-card">
+        <div class="flashcard-top-meta">
+          <span id="dictation-source-badge" class="flashcard-source-badge" hidden></span>
+          <span id="dictation-number" class="flashcard-number">Từ 1 / 1</span>
+        </div>
+        <div class="dictation-audio-row">
+          <button type="button" id="dictation-speak-word-btn" class="speaker-btn-pill">🔊 Nghe từ (0.9x)</button>
+          <button type="button" id="dictation-speak-sentence-btn" class="speaker-btn-pill" hidden>🔊 Nghe câu ví dụ</button>
+          <button type="button" id="dictation-seek-yt-btn" class="speaker-btn-pill flashcard-yt-btn" hidden>🎬 Xem đoạn gốc</button>
+        </div>
+        <div class="dictation-prompt-box">
+          <p id="dictation-meaning" class="dictation-meaning"></p>
+          <span id="dictation-pos" class="flashcard-pos" hidden></span>
+          <p id="dictation-context" class="dictation-context" hidden></p>
+        </div>
+        <div class="dictation-input-row">
+          <input type="text" id="dictation-input" class="dictation-input" placeholder="Gõ lại từ tiếng Anh bạn nghe được..." autocomplete="off" spellcheck="false">
+          <button type="button" id="dictation-check-btn" class="practice-primary-btn">✅ Kiểm tra</button>
+          <button type="button" id="dictation-hint-btn" class="practice-secondary-btn">💡 Gợi ý</button>
+        </div>
+        <p id="dictation-hint-text" class="dictation-hint-text" hidden></p>
+        <div id="dictation-diff-result" class="dictation-diff-box" aria-live="polite" hidden></div>
+        <div class="flashcard-controls">
+          <button type="button" id="dictation-prev-btn" class="practice-secondary-btn">⬅️ Từ trước</button>
+          <button type="button" id="dictation-next-btn" class="practice-secondary-btn">Từ tiếp ➡️</button>
+        </div>
+      </article>
+    </section>
+
+    <section id="sentence-mode-panel" class="practice-panel" hidden>
+      <article class="sentence-card">
+        <div class="flashcard-top-meta">
+          <span id="sentence-source-badge" class="flashcard-source-badge" hidden></span>
+          <span id="sentence-number" class="flashcard-number">Từ 1 / 1</span>
+        </div>
+        <h2 id="sentence-target-word" class="sentence-target-word"></h2>
+        <div class="sentence-target-meta">
+          <span id="sentence-target-pos" class="flashcard-pos" hidden></span>
+          <span id="sentence-target-ipa" class="flashcard-ipa"></span>
+        </div>
+        <p id="sentence-target-meaning" class="dictation-meaning"></p>
+        <p id="sentence-ref-context" class="dictation-context" hidden></p>
+        <textarea id="sentence-input" class="sentence-textarea" rows="3" placeholder="Đặt một câu tiếng Anh thực tế có sử dụng từ vựng trên..."></textarea>
+        <div class="flashcard-controls">
+          <button type="button" id="sentence-prev-btn" class="practice-secondary-btn">⬅️ Từ trước</button>
+          <button type="button" id="sentence-check-btn" class="practice-primary-btn">✨ AI Sửa đặt câu</button>
+          <button type="button" id="sentence-next-btn" class="practice-secondary-btn">Từ tiếp ➡️</button>
+        </div>
+        <div id="sentence-feedback" class="sentence-feedback-box" aria-live="polite" hidden></div>
+      </article>
+    </section>
+
+    <section id="story-mode-panel" class="practice-panel" hidden>
+      <article class="story-card">
+        <div class="story-header">
+          <div>
+            <span class="practice-eyebrow">MICRO-STORY &amp; ROLEPLAY</span>
+            <h2 id="story-scenario-title" class="story-scenario-title">🎭 Hội thoại Thực chiến Đa Ngữ cảnh</h2>
+          </div>
+          <div class="story-toolbar">
+            <button type="button" id="story-regenerate-btn" class="practice-primary-btn">✨ Tạo hội thoại mới</button>
+            <button type="button" id="story-speak-all-btn" class="practice-secondary-btn">🔊 Nghe cả đoạn</button>
+            <button type="button" id="stop-dialogue-btn" class="practice-secondary-btn story-stop-btn" hidden>⏹ Dừng</button>
+            <div id="story-speed-group" class="story-speed-group" role="group" aria-label="Tốc độ giọng đọc hội thoại">
+              <button type="button" class="story-speed-btn" data-rate="0.5">0.5x</button>
+              <button type="button" class="story-speed-btn active" data-rate="1">1x</button>
+              <button type="button" class="story-speed-btn" data-rate="2">2x</button>
+            </div>
+            <button type="button" id="story-toggle-vi-btn" class="practice-secondary-btn">👁️ Ẩn/Hiện nghĩa tiếng Việt</button>
+            <button type="button" id="story-toggle-cloze-btn" class="practice-secondary-btn">🧩 Bật đục lỗ điền từ (Cloze Mode)</button>
+          </div>
+        </div>
+
+        <div id="story-target-words-bar" class="story-target-words-bar"></div>
+        <div id="story-status-msg" class="story-status-msg" role="status" aria-live="polite" hidden></div>
+        <div id="story-dialogue-list" class="story-dialogue-list" aria-live="polite"></div>
+
+        <div id="story-cloze-actions" class="story-cloze-actions" hidden>
+          <button type="button" id="story-check-cloze-btn" class="practice-primary-btn">✅ Kiểm tra đục lỗ</button>
+          <span id="story-cloze-score" class="story-cloze-score" role="status"></span>
+        </div>
+
+        <div id="story-roleplay-box" class="story-roleplay-box" hidden>
+          <div class="story-roleplay-header">
+            <span class="story-roleplay-badge">🎯 Thử thách Phản xạ Tình huống</span>
+            <button type="button" id="story-speak-prompt-btn" class="speaker-btn-pill is-compact">🔊 Nghe câu hỏi</button>
+          </div>
+          <p id="story-roleplay-prompt-en" class="story-roleplay-prompt-en"></p>
+          <p id="story-roleplay-prompt-vi" class="story-roleplay-prompt-vi"></p>
+          <textarea id="story-roleplay-input" class="sentence-textarea" rows="3" placeholder="Nhập câu phản hồi tiếng Anh của bạn (sử dụng 1–2 từ vựng mục tiêu)..."></textarea>
+          <div class="story-roleplay-actions">
+            <button type="button" id="story-roleplay-check-btn" class="practice-primary-btn">✨ AI Chấm phản xạ</button>
+          </div>
+          <div id="story-roleplay-feedback" class="sentence-feedback-box" aria-live="polite" hidden></div>
+        </div>
+      </article>
+    </section>
+
+    <section id="practice-result-panel" class="practice-result-panel" hidden>
+      <div class="result-heading">
+        <span class="result-kicker">HOÀN THÀNH</span>
+        <h2 id="practice-result-title">Kết quả luyện tập</h2>
+        <p id="practice-score-summary"></p>
+      </div>
+      <div class="result-actions">
+        <button type="button" id="retry-wrong-btn" class="practice-secondary-btn">🔁 Làm lại câu sai</button>
+        <button type="button" id="retry-all-btn" class="practice-primary-btn">🔄 Làm lại toàn bộ</button>
+        <button type="button" id="close-practice-btn" class="practice-secondary-btn">✕ Đóng phòng luyện tập</button>
+      </div>
+      <div class="review-wrap">
+        <h3>Xem lại câu trả lời</h3>
+        <div id="practice-review-list" class="practice-review-list"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer id="practice-footer" class="app-footer practice-footer" role="contentinfo">
+    <span class="app-footer-text">Author: Đoàn Văn Thiên Hoàng — Smart Study</span>
+  </footer>
+
+  <div id="practice-countdown-overlay" class="countdown-overlay" hidden>
+    <button type="button" id="countdown-skip-btn" class="countdown-skip-btn">Bỏ qua</button>
+    <p id="practice-countdown-subtitle" class="countdown-subtitle">Chuẩn bị luyện tập...</p>
+    <div id="practice-countdown-text" class="countdown-label">3</div>
+  </div>
+  <div id="practice-load-error" class="practice-load-error" role="alert" hidden></div>
+
+  <script src="assets/docx.umd.js"></script>
+  <script type="module" src="practice.js"></script>
+</body>
+</html>

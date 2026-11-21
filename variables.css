@@ -1,0 +1,453 @@
+/* ==========================================================================
+   Smart Study Extension — Design System Variables & 15 Themes (data-theme)
+   ========================================================================== */
+
+:root,
+:root[data-theme="tech-ocean"] {
+  color-scheme: dark;
+  --bg-page: #07172b;
+  --bg-card: #0d233f;
+  --bg-elevated: #143257;
+  --text-main: #f8fafc;
+  --text-muted: #c2d6ec;
+  --accent: #38bdf8;
+  --accent-secondary: #fb923c;
+  --accent-text: #041426;
+  --border-subtle: rgba(125, 211, 252, 0.34);
+  --shadow-card: 0 12px 32px rgba(2, 10, 24, 0.45);
+  --bg-glow: radial-gradient(ellipse at 14% 0%, rgba(14, 165, 233, 0.2), transparent 36rem),
+    radial-gradient(ellipse at 88% 10%, rgba(249, 115, 22, 0.12), transparent 28rem);
+
+  /* Typography scale */
+  --fs-xs: 0.72rem;
+  --fs-sm: 0.82rem;
+  --fs-md: 0.92rem;
+  --fs-lg: 1.12rem;
+  --fs-xl: 1.4rem;
+
+  /* Geometry & component tokens */
+  --radius-card: 16px;
+  --radius-btn: 10px;
+  --btn-min-h: 38px;
+  --logo-size: 36px;
+  --logo-compact-size: 28px;
+
+  /* Compatibility aliases for existing sidebar.css & practice.css */
+  --bg-surface: var(--bg-card);
+  --bg-nav: var(--bg-elevated);
+  --bg-hover: var(--bg-elevated);
+  --text-primary: var(--text-main);
+  --text-secondary: var(--text-muted);
+  --accent-light: color-mix(in oklab, var(--accent) 18%, var(--bg-card));
+  --border-color: var(--border-subtle);
+  --radius-md: var(--radius-btn);
+  --radius-sm: 8px;
+  --shadow-sm: var(--shadow-card);
+
+  --practice-bg: var(--bg-page);
+  --practice-surface: var(--bg-card);
+  --practice-ink: var(--text-main);
+  --practice-muted: var(--text-muted);
+  --practice-border: var(--border-subtle);
+  --practice-blue: var(--accent);
+  --practice-blue-dark: color-mix(in oklab, var(--accent) 84%, black);
+  --practice-green: #22c55e;
+  --practice-red: #fb7185;
+}
+
+/* 2. Tech Midnight (Tối sâu công nghệ + Cyan / Amber) */
+:root[data-theme="tech-midnight"] {
+  color-scheme: dark;
+  --bg-page: #060b16;
+  --bg-card: #0f172a;
+  --bg-elevated: #1e293b;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --accent: #38bdf8;
+  --accent-secondary: #f59e0b;
+  --accent-text: #061322;
+  --border-subtle: rgba(148, 163, 184, 0.22);
+  --shadow-card: 0 14px 34px rgba(0, 0, 0, 0.52);
+  --bg-glow: radial-gradient(ellipse at 15% 0%, rgba(56, 189, 248, 0.16), transparent 34rem);
+}
+
+/* 3. Cyber Cobalt (Xanh dương cobalt đậm + Neon Orange) */
+:root[data-theme="cyber-cobalt"] {
+  color-scheme: dark;
+  --bg-page: #0a1430;
+  --bg-card: #122352;
+  --bg-elevated: #1c3270;
+  --text-main: #f8fafc;
+  --text-muted: #c7d2fe;
+  --accent: #60a5fa;
+  --accent-secondary: #fb923c;
+  --accent-text: #061535;
+  --border-subtle: rgba(147, 197, 253, 0.34);
+  --shadow-card: 0 12px 30px rgba(4, 9, 28, 0.48);
+  --bg-glow: radial-gradient(ellipse at 10% 0%, rgba(59, 130, 246, 0.22), transparent 34rem);
+}
+
+/* 4. Automation Slate (Xám thép tự động hóa + Teal / Coral) */
+:root[data-theme="automation-slate"] {
+  color-scheme: dark;
+  --bg-page: #111827;
+  --bg-card: #1e293b;
+  --bg-elevated: #2b384e;
+  --text-main: #f8fafc;
+  --text-muted: #cbd5e1;
+  --accent: #2dd4bf;
+  --accent-secondary: #fb923c;
+  --accent-text: #042f2e;
+  --border-subtle: rgba(203, 213, 225, 0.3);
+  --shadow-card: 0 12px 28px rgba(0, 0, 0, 0.42);
+  --bg-glow: radial-gradient(ellipse at 16% 0%, rgba(20, 184, 166, 0.16), transparent 32rem);
+}
+
+/* 5. Neural Violet (Tím AI hiện đại + Electric Cyan) */
+:root[data-theme="neural-violet"] {
+  color-scheme: dark;
+  --bg-page: #130e24;
+  --bg-card: #21183d;
+  --bg-elevated: #2e2354;
+  --text-main: #faf5ff;
+  --text-muted: #ddd6fe;
+  --accent: #a78bfa;
+  --accent-secondary: #38bdf8;
+  --accent-text: #160c2e;
+  --border-subtle: rgba(196, 181, 253, 0.34);
+  --shadow-card: 0 12px 32px rgba(10, 6, 24, 0.5);
+  --bg-glow: radial-gradient(ellipse at 12% 0%, rgba(139, 92, 246, 0.22), transparent 34rem);
+}
+
+/* 6. Emerald Matrix (Xanh ngọc kỹ thuật + Amber) */
+:root[data-theme="emerald-matrix"] {
+  color-scheme: dark;
+  --bg-page: #061f1a;
+  --bg-card: #0c2e27;
+  --bg-elevated: #134037;
+  --text-main: #ecfdf5;
+  --text-muted: #86efac;
+  --accent: #10b981;
+  --accent-secondary: #fbbf24;
+  --accent-text: #022c22;
+  --border-subtle: rgba(52, 211, 153, 0.26);
+  --shadow-card: 0 12px 30px rgba(2, 18, 14, 0.48);
+  --bg-glow: radial-gradient(ellipse at 12% 0%, rgba(16, 185, 129, 0.2), transparent 34rem);
+}
+
+/* 7. Obsidian Amber (Đen than sang trọng + Vàng hổ phách) */
+:root[data-theme="obsidian-amber"] {
+  color-scheme: dark;
+  --bg-page: #121110;
+  --bg-card: #1c1917;
+  --bg-elevated: #292524;
+  --text-main: #fafaf9;
+  --text-muted: #d6d3d1;
+  --accent: #f59e0b;
+  --accent-secondary: #38bdf8;
+  --accent-text: #1c1917;
+  --border-subtle: rgba(245, 158, 11, 0.26);
+  --shadow-card: 0 12px 30px rgba(0, 0, 0, 0.52);
+  --bg-glow: radial-gradient(ellipse at 14% 0%, rgba(245, 158, 11, 0.16), transparent 32rem);
+}
+
+/* 8. Crimson Carbon (Đen carbon + Đỏ san hô năng động) */
+:root[data-theme="crimson-carbon"] {
+  color-scheme: dark;
+  --bg-page: #180c12;
+  --bg-card: #27131d;
+  --bg-elevated: #381c2a;
+  --text-main: #fff1f2;
+  --text-muted: #fda4af;
+  --accent: #f43f5e;
+  --accent-secondary: #38bdf8;
+  --accent-text: #ffffff;
+  --border-subtle: rgba(251, 113, 133, 0.28);
+  --shadow-card: 0 12px 30px rgba(15, 4, 9, 0.52);
+  --bg-glow: radial-gradient(ellipse at 14% 0%, rgba(244, 63, 94, 0.2), transparent 34rem);
+}
+
+/* 9. Clean Daylight (Sáng tinh gọn chuẩn học thuật — Blue / Orange) */
+:root[data-theme="clean-daylight"] {
+  color-scheme: light;
+  --bg-page: #f1f5f9;
+  --bg-card: #ffffff;
+  --bg-elevated: #f8fafc;
+  --text-main: #0f172a;
+  --text-muted: #475569;
+  --accent: #2563eb;
+  --accent-secondary: #ea580c;
+  --accent-text: #ffffff;
+  --border-subtle: #cbd5e1;
+  --shadow-card: 0 8px 24px rgba(15, 23, 42, 0.08);
+  --bg-glow: radial-gradient(ellipse at 12% 0%, rgba(191, 219, 254, 0.55), transparent 34rem);
+  --practice-green: #15803d;
+  --practice-red: #be123c;
+}
+
+/* 10. Nordic Sky (Sáng xanh băng dịu mắt + Sky Blue) */
+:root[data-theme="nordic-sky"] {
+  color-scheme: light;
+  --bg-page: #eef6ff;
+  --bg-card: #ffffff;
+  --bg-elevated: #f0f9ff;
+  --text-main: #0c2440;
+  --text-muted: #3b5978;
+  --accent: #0284c7;
+  --accent-secondary: #f97316;
+  --accent-text: #ffffff;
+  --border-subtle: #bae6fd;
+  --shadow-card: 0 8px 24px rgba(2, 132, 199, 0.09);
+  --bg-glow: radial-gradient(ellipse at 10% 0%, rgba(125, 211, 252, 0.4), transparent 32rem);
+  --practice-green: #15803d;
+  --practice-red: #be123c;
+}
+
+/* 11. Academic Ivory (Giấy ngà học thuật chống mỏi mắt + Navy) */
+:root[data-theme="academic-ivory"] {
+  color-scheme: light;
+  --bg-page: #f6f3ea;
+  --bg-card: #fffdf8;
+  --bg-elevated: #f3ede0;
+  --text-main: #1f2421;
+  --text-muted: #57534e;
+  --accent: #1d4ed8;
+  --accent-secondary: #d97706;
+  --accent-text: #ffffff;
+  --border-subtle: #d6cfc0;
+  --shadow-card: 0 8px 22px rgba(41, 37, 36, 0.08);
+  --bg-glow: radial-gradient(ellipse at 14% 0%, rgba(253, 230, 138, 0.35), transparent 32rem);
+  --practice-green: #15803d;
+  --practice-red: #be123c;
+}
+
+/* 12. Mint Focus (Sáng bạc hà tập trung + Emerald) */
+:root[data-theme="mint-focus"] {
+  color-scheme: light;
+  --bg-page: #ecfdf5;
+  --bg-card: #ffffff;
+  --bg-elevated: #f0fdf4;
+  --text-main: #064e3b;
+  --text-muted: #336b5b;
+  --accent: #059669;
+  --accent-secondary: #0284c7;
+  --accent-text: #ffffff;
+  --border-subtle: #a7f3d0;
+  --shadow-card: 0 8px 22px rgba(5, 150, 105, 0.09);
+  --bg-glow: radial-gradient(ellipse at 14% 0%, rgba(110, 231, 183, 0.35), transparent 32rem);
+  --practice-green: #15803d;
+  --practice-red: #be123c;
+}
+
+/* 13. Sunrise Peach (Sáng cam ấm sáng tạo + Coral Orange) */
+:root[data-theme="sunrise-peach"] {
+  color-scheme: light;
+  --bg-page: #fff7ed;
+  --bg-card: #ffffff;
+  --bg-elevated: #ffedd5;
+  --text-main: #431407;
+  --text-muted: #7c2d12;
+  --accent: #ea580c;
+  --accent-secondary: #2563eb;
+  --accent-text: #ffffff;
+  --border-subtle: #fed7aa;
+  --shadow-card: 0 8px 22px rgba(234, 88, 12, 0.09);
+  --bg-glow: radial-gradient(ellipse at 12% 0%, rgba(253, 186, 116, 0.38), transparent 32rem);
+  --practice-green: #15803d;
+  --practice-red: #be123c;
+}
+
+/* 14. Lavender Mist (Sáng tím dịu nhẹ + Indigo) */
+:root[data-theme="lavender-mist"] {
+  color-scheme: light;
+  --bg-page: #f5f3ff;
+  --bg-card: #ffffff;
+  --bg-elevated: #ede9fe;
+  --text-main: #2e1065;
+  --text-muted: #5b4b8a;
+  --accent: #6d28d9;
+  --accent-secondary: #0ea5e9;
+  --accent-text: #ffffff;
+  --border-subtle: #ddd6fe;
+  --shadow-card: 0 8px 22px rgba(109, 40, 217, 0.09);
+  --bg-glow: radial-gradient(ellipse at 14% 0%, rgba(196, 181, 253, 0.38), transparent 32rem);
+  --practice-green: #15803d;
+  --practice-red: #be123c;
+}
+
+/* 15. Rose Quartz (Sáng hồng phấn tinh tế + Rose) */
+:root[data-theme="rose-quartz"] {
+  color-scheme: light;
+  --bg-page: #fff1f2;
+  --bg-card: #ffffff;
+  --bg-elevated: #ffe4e6;
+  --text-main: #4c0519;
+  --text-muted: #881337;
+  --accent: #e11d48;
+  --accent-secondary: #2563eb;
+  --accent-text: #ffffff;
+  --border-subtle: #fecdd3;
+  --shadow-card: 0 8px 22px rgba(225, 29, 72, 0.09);
+  --bg-glow: radial-gradient(ellipse at 14% 0%, rgba(253, 164, 175, 0.36), transparent 32rem);
+  --practice-green: #15803d;
+  --practice-red: #be123c;
+}
+
+/* Forced Colors Mode (Windows High Contrast) fallback */
+@media (forced-colors: active) {
+  :root {
+    --bg-page: Canvas;
+    --bg-card: Canvas;
+    --bg-elevated: Canvas;
+    --text-main: CanvasText;
+    --text-muted: GrayText;
+    --accent: Highlight;
+    --accent-secondary: Highlight;
+    --accent-text: HighlightText;
+    --border-subtle: CanvasText;
+  }
+}
+
+/* Auto-Compact tokens for narrow Side Panel / compact windows */
+@media (max-width: 400px) {
+  :root {
+    --fs-xs: 0.7rem;
+    --fs-sm: 0.78rem;
+    --fs-md: 0.86rem;
+    --fs-lg: 1rem;
+    --fs-xl: 1.2rem;
+    --btn-min-h: 36px;
+    --logo-size: 30px;
+    --logo-compact-size: 24px;
+    --radius-card: 14px;
+    --radius-btn: 9px;
+  }
+}
+
+/* ==========================================================================
+   Shared Brand Logo Slot (Minimalist Header Mark), Footer & Theme Switcher
+   ========================================================================== */
+.brand-logo-slot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 var(--logo-compact-size);
+  width: var(--logo-compact-size);
+  height: var(--logo-compact-size);
+  border-radius: 8px;
+  border: 1px solid color-mix(in oklab, var(--accent) 45%, var(--border-subtle));
+  background: linear-gradient(135deg,
+      color-mix(in oklab, var(--accent) 22%, var(--bg-elevated)),
+      color-mix(in oklab, var(--accent-secondary) 16%, var(--bg-elevated)));
+  color: var(--accent);
+  overflow: hidden;
+  user-select: none;
+  box-shadow: 0 2px 8px color-mix(in oklab, var(--accent) 22%, transparent);
+  transition: border-color 0.16s ease, transform 0.16s ease;
+}
+
+.brand-logo-mark {
+  width: 72%;
+  height: 72%;
+  display: block;
+}
+
+.app-footer {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 9px 14px;
+  border-top: 1px solid var(--border-subtle);
+  background-color: var(--bg-card);
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-align: center;
+  line-height: 1.4;
+}
+
+.app-footer-text {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 400px) {
+  .app-footer {
+    padding: 7px 10px;
+    font-size: var(--fs-xs);
+  }
+}
+
+.theme-picker-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.theme-picker-select {
+  min-height: var(--btn-min-h);
+  max-width: 175px;
+  padding: 6px 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-btn);
+  background-color: var(--bg-elevated);
+  color: var(--text-main);
+  font-family: inherit;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  cursor: pointer;
+  transition: border-color 0.16s ease, background-color 0.16s ease;
+}
+
+.theme-picker-select:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.theme-picker-select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.theme-picker-select:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ==========================================================================
+   Logo Automation Processing State (Tech Pulse Ring)
+   ========================================================================== */
+@keyframes logo-automation-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 0 color-mix(in oklab, var(--accent) 55%, transparent),
+      0 0 10px color-mix(in oklab, var(--accent) 32%, transparent);
+    border-color: var(--accent);
+  }
+  50% {
+    box-shadow:
+      0 0 0 5px color-mix(in oklab, var(--accent) 0%, transparent),
+      0 0 16px color-mix(in oklab, var(--accent-secondary) 48%, transparent);
+    border-color: var(--accent-secondary);
+  }
+}
+
+.brand-logo-slot.is-logo-processing,
+.brand-logo-slot[data-logo-state="processing"],
+.mascot-avatar.is-logo-processing,
+.mascot-avatar[data-logo-state="processing"] {
+  animation: logo-automation-pulse 1.35s ease-in-out infinite;
+  border-color: var(--accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brand-logo-slot.is-logo-processing,
+  .brand-logo-slot[data-logo-state="processing"],
+  .mascot-avatar.is-logo-processing,
+  .mascot-avatar[data-logo-state="processing"] {
+    animation: none;
+    box-shadow: 0 0 0 2px var(--accent);
+  }
+}

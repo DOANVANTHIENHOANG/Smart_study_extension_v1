@@ -1,0 +1,51 @@
+{
+  "manifest_version": 3,
+  "name": "Smart Study Extension",
+  "version": "1.0.0",
+  "description": "AI Study Assistant: Quiz, YouTube Summary, Leitner SRS & Word/PDF — By Đoàn Văn Thiên Hoàng",
+  "icons": {
+    "16": "assets/logo_software.png",
+    "48": "assets/logo_software.png",
+    "128": "assets/logo_software.png"
+  },
+  "permissions": [
+    "sidePanel",
+    "storage",
+    "unlimitedStorage",
+    "scripting",
+    "activeTab",
+    "tabs",
+    "cookies",
+    "contextMenus"
+  ],
+  "host_permissions": [
+    "<all_urls>",
+    "*://*.youtube.com/*",
+    "http://127.0.0.1:8000/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_title": "Mở Smart Study",
+    "default_icon": {
+      "16": "assets/logo_software.png",
+      "48": "assets/logo_software.png",
+      "128": "assets/logo_software.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "side_panel": {
+    "default_path": "sidebar.html"
+  }
+}

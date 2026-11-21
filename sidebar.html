@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Study Extension</title>
+  <link rel="stylesheet" href="variables.css">
+  <link rel="stylesheet" href="sidebar.css">
+</head>
+<body>
+  <header class="app-topbar">
+    <div class="topbar-leading">
+      <button
+        type="button"
+        id="menu-toggle-btn"
+        class="icon-menu-btn"
+        aria-label="Mở menu"
+        aria-controls="nav-drawer"
+        aria-expanded="false"
+      >☰</button>
+      <div id="sidebar-logo-slot" class="brand-logo-slot" title="Smart Study AI Copilot">
+        <img id="sidebar-logo-img" class="brand-logo-img" src="assets/logo_extension.png" alt="Logo Smart Study" width="28" height="28">
+      </div>
+      <span id="current-view-title">Tạo Quiz bằng AI</span>
+    </div>
+    <div class="topbar-status" aria-label="Trạng thái tiện ích">
+      <span id="app-status-indicator" class="app-status-indicator"></span>
+      <span id="app-status-text">Sẵn sàng</span>
+    </div>
+  </header>
+
+  <div id="pdf-status-widget" class="status-mascot-wrap" role="status" aria-live="polite" aria-atomic="true">
+    <div class="mascot-avatar" id="mascot-avatar" aria-hidden="true">
+      <img class="mascot-logo-img" src="assets/logo_extension.png" alt="Smart Study Mascot" width="44" height="44">
+    </div>
+    <div id="pdf-status-bubble" class="mascot-bubble">
+      <span id="pdf-status-text">Sẵn sàng xử lý tài liệu.</span>
+    </div>
+  </div>
+
+  <div id="nav-backdrop" class="nav-backdrop" hidden></div>
+  <aside id="nav-drawer" class="nav-drawer" aria-hidden="true" inert>
+    <div class="nav-drawer-header">
+      <div>
+        <span class="nav-drawer-eyebrow">SMART STUDY</span>
+        <h2>Điều hướng</h2>
+      </div>
+      <button type="button" id="menu-close-btn" class="icon-close-btn" aria-label="Đóng menu">✕</button>
+    </div>
+    <nav class="drawer-navigation" aria-label="Điều hướng chức năng">
+      <div class="nav-group">
+        <h3>HỌC TẬP &amp; AI</h3>
+        <button type="button" class="nav-item active" data-view="view-quiz" aria-current="page">
+          <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="m3 17 2 2 4-4"/>
+            <path d="m3 7 2 2 4-4"/>
+            <path d="M13 6h8"/>
+            <path d="M13 12h8"/>
+            <path d="M13 18h8"/>
+          </svg>
+          <span>Tạo Quiz bằng AI</span>
+        </button>
+        <button type="button" class="nav-item" data-view="view-youtube">
+          <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M2.5 17a24.12 24.12 0 0 1 0-10 2 2 0 0 1 1.4-1.4 49.56 49.56 0 0 1 16.2 0A2 2 0 0 1 21.5 7a24.12 24.12 0 0 1 0 10 2 2 0 0 1-1.4 1.4 49.55 49.55 0 0 1-16.2 0A2 2 0 0 1 2.5 17"/>
+            <path d="m10 15 5-3-5-3z"/>
+          </svg>
+          <span>Tóm tắt YouTube</span>
+        </button>
+        <button type="button" class="nav-item" data-view="view-word-form">
+          <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+          </svg>
+          <span>Chỉnh sửa form Word</span>
+        </button>
+        <button type="button" class="nav-item" data-view="view-history">
+          <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+            <path d="M3 3v5h5"/>
+            <path d="M12 7v5l4 2"/>
+          </svg>
+          <span>Lịch sử Bộ đề</span>
+        </button>
+      </div>
+      <div class="nav-group">
+        <h3>CÔNG CỤ TÀI LIỆU</h3>
+        <button type="button" class="nav-item" data-view="view-export">
+          <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/>
+            <path d="M14 2v4a2 2 0 0 0 2 2h4"/>
+            <path d="M12 18v-6"/>
+            <path d="m9 15 3 3 3-3"/>
+          </svg>
+          <span>Xuất Word &amp; In PDF</span>
+        </button>
+      </div>
+      <div class="nav-group">
+        <h3>HỆ THỐNG</h3>
+        <button type="button" class="nav-item" data-view="view-settings">
+          <svg class="nav-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/>
+            <circle cx="16.5" cy="7.5" r=".5" fill="currentColor"/>
+          </svg>
+          <span>Cài đặt API Key</span>
+        </button>
+      </div>
+    </nav>
+  </aside>
+
+  <main class="content-area">
+    <section id="selection-copilot-box" class="card selection-copilot-card" aria-live="polite" hidden>
+      <div class="copilot-card-header">
+        <div class="copilot-card-title-wrap">
+          <span class="copilot-badge">✨ AI Selection Copilot</span>
+        </div>
+        <button type="button" id="close-copilot-box-btn" class="copilot-close-btn" aria-label="Đóng AI Selection Copilot" title="Đóng">✕</button>
+      </div>
+
+      <blockquote id="copilot-selected-quote" class="copilot-selected-quote"></blockquote>
+      <div id="copilot-source-meta" class="copilot-source-meta" hidden></div>
+
+      <div class="copilot-action-pills" role="group" aria-label="Tác vụ Copilot cho đoạn bôi đen">
+        <button type="button" class="copilot-action-pill" data-copilot-action="explain">
+          <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-4 12.7V16a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1v-1.3A7 7 0 0 0 12 2z"/></svg>
+          <span>Giải thích</span>
+        </button>
+        <button type="button" class="copilot-action-pill" data-copilot-action="vocab">
+          <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          <span>Lưu từ vựng</span>
+        </button>
+        <button type="button" class="copilot-action-pill" data-copilot-action="quiz">
+          <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m9 11 3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          <span>Tạo Quiz</span>
+        </button>
+      </div>
+
+      <div id="copilot-result-container" class="copilot-result-container"></div>
+    </section>
+
+    <section id="view-quiz" class="app-view active" aria-labelledby="current-view-title">
+      <div class="card">
+        <h2>Tạo Quiz bằng AI</h2>
+        <p>Chọn nguồn nội dung để tạo câu hỏi ôn tập:</p>
+
+        <div class="quiz-source-tabs" role="tablist" aria-label="Nguồn tạo Quiz">
+          <button type="button" class="source-tab source-tab-btn active" role="tab" aria-selected="true" aria-controls="source-file" data-source="file">
+            <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/></svg>
+            <span>Từ File</span>
+          </button>
+          <button type="button" class="source-tab source-tab-btn" role="tab" aria-selected="false" aria-controls="source-web" data-source="url">
+            <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            <span>Trang Web</span>
+          </button>
+          <button type="button" class="source-tab source-tab-btn" role="tab" aria-selected="false" aria-controls="source-text" data-source="text">
+            <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+            <span>Dán Chữ</span>
+          </button>
+        </div>
+
+        <div id="quiz-shared-controls" class="quiz-config-row">
+          <select id="num-questions" class="quiz-select" aria-label="Số lượng câu hỏi">
+            <option value="all">Tất cả</option>
+            <option value="10">10 câu</option>
+            <option value="20">20 câu</option>
+            <option value="50">50 câu</option>
+          </select>
+          <select id="quiz-difficulty" class="quiz-select" aria-label="Chế độ và mức độ tạo đề">
+            <option value="normal" selected>Độ bình thường (Giữ nguyên thứ tự file)</option>
+            <option value="shuffle">Độ khó: Lộn xộn (Xáo trộn câu &amp; đáp án)</option>
+            <option value="vocab">Từ vựng tiếng Anh</option>
+          </select>
+        </div>
+
+        <div class="quiz-source-panels">
+          <section id="source-file" class="source-panel active" data-source-panel="file" role="tabpanel">
+            <label for="doc-upload" class="field-label">Tạo Quiz từ tài liệu PDF hoặc DOCX</label>
+            <div class="file-select-row">
+              <input type="file" id="doc-upload" accept=".pdf,.docx" class="file-input">
+            </div>
+            <button type="button" id="generate-quiz-file-btn" class="action-btn primary-action">Tạo Quiz từ File</button>
+          </section>
+
+          <section id="source-web" class="source-panel" data-source-panel="url" role="tabpanel" hidden>
+            <label for="summary-level" class="field-label">Mức độ tóm tắt</label>
+            <select id="summary-level" class="quiz-select" aria-label="Mức độ tóm tắt">
+              <option value="medium" selected>Tóm tắt: Ý chính (3–5 gạch đầu dòng)</option>
+              <option value="short">Tóm tắt: Siêu ngắn (1–2 câu cốt lõi)</option>
+              <option value="detailed">Tóm tắt: Chi tiết (Đầy đủ diễn biến &amp; số liệu)</option>
+              <option value="simple">Tóm tắt: Dễ hiểu (Giải thích thuật ngữ + ví dụ)</option>
+            </select>
+            <div id="page-reading-time" class="reading-time-badge" hidden></div>
+            <button type="button" id="generate-quiz-url-btn" class="action-btn primary-action primary-btn">Tóm tắt Trang Web hiện tại</button>
+          </section>
+
+          <section id="source-text" class="source-panel" data-source-panel="text" role="tabpanel" hidden>
+            <label for="quiz-input" class="field-label">Dán nội dung bài học</label>
+            <textarea id="quiz-input" rows="6" placeholder="Dán văn bản bài học của bạn vào đây..." class="quiz-textarea"></textarea>
+            <div class="quiz-input-tools">
+              <span id="quiz-char-count">0 ký tự • 0 từ</span>
+              <button type="button" id="clear-quiz-input-btn">✕ Xóa nhanh</button>
+            </div>
+            <button type="button" id="generate-quiz-btn" class="action-btn primary-action">Tạo Quiz bằng AI</button>
+          </section>
+        </div>
+
+        <div id="quiz-result" class="quiz-result" aria-live="polite" hidden></div>
+      </div>
+    </section>
+
+    <section id="view-export" class="app-view" aria-labelledby="current-view-title" hidden>
+      <div class="card">
+        <h2>Xuất Word &amp; In PDF</h2>
+        <p>Tải nội dung tài liệu về Word hoặc in bản gốc thành PDF.</p>
+        <div class="view-controls">
+          <button type="button" id="export-web-docx-btn" class="action-btn docx-action">
+            <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M12 18v-6M9 15l3 3 3-3"/></svg>
+            <span>Tải ruột tài liệu về Word (.docx)</span>
+          </button>
+          <div class="pdf-tools-control">
+            <div class="scroll-speed-heading">
+              <label for="scroll-speed-slider">Tốc độ cuộn</label>
+              <span id="scroll-speed-badge" class="scroll-speed-badge" aria-live="polite">Vừa</span>
+            </div>
+            <input type="range" id="scroll-speed-slider" min="1" max="5" step="1" value="3" aria-label="Tốc độ cuộn khi chuẩn bị PDF">
+            <button type="button" id="clear-cookies-reload-btn">
+              <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+              <span>Xóa cookie &amp; tải lại trang</span>
+            </button>
+          </div>
+          <button type="button" id="export-web-pdf-btn" class="action-btn pdf-action">
+            <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9V2h12v7"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+            <span>In / Lưu bản gốc PDF (.pdf)</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section id="view-youtube" class="app-view" aria-labelledby="current-view-title" hidden>
+      <div class="card">
+        <h2>Tóm tắt YouTube</h2>
+        <p>Tự động trích xuất tiêu đề, phụ đề và tóm tắt nội dung video YouTube đang xem.</p>
+        <div class="view-controls">
+          <select id="yt-summary-level" class="quiz-select" aria-label="Mức độ tóm tắt video">
+            <option value="medium" selected>Tóm tắt: Ý chính (Kèm mốc thời gian)</option>
+            <option value="short">Tóm tắt: Siêu ngắn (1–2 câu cốt lõi)</option>
+            <option value="detailed">Tóm tắt: Chi tiết (Đầy đủ từng phần)</option>
+            <option value="simple">Tóm tắt: Dễ hiểu (Giải thích thuật ngữ + ví dụ)</option>
+          </select>
+          <button type="button" id="summarize-yt-btn" class="action-btn primary-action">
+            <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg>
+            <span>Tóm tắt Video đang xem</span>
+          </button>
+          <div id="yt-status" class="inline-status" role="status" aria-live="polite" hidden></div>
+          <div id="yt-result" class="content-result" aria-live="polite">Bản tóm tắt video YouTube sẽ hiển thị tại đây.</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="view-word-form" class="app-view" aria-labelledby="current-view-title" hidden>
+      <div class="card">
+        <h2>Chỉnh sửa form Word</h2>
+        <p>Tạo đề trắc nghiệm, tiểu luận hoặc báo cáo CMU để xuất file Word.</p>
+        <div class="view-controls">
+          <div class="wf-mode-tabs" role="tablist" aria-label="Loại form Word">
+            <button type="button" class="wf-mode-tab active" role="tab" aria-selected="true" data-wf-mode="quiz">
+              <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="m9 14 2 2 4-4"/></svg>
+              <span>Trắc nghiệm</span>
+            </button>
+            <button type="button" class="wf-mode-tab" role="tab" aria-selected="false" data-wf-mode="essay">
+              <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8"/></svg>
+              <span>Tiểu luận</span>
+            </button>
+            <button type="button" class="wf-mode-tab" role="tab" aria-selected="false" data-wf-mode="cmu">
+              <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+              <span>Báo cáo CMU</span>
+            </button>
+          </div>
+
+          <div id="wf-quiz-panel" class="wf-quiz-panel" role="tabpanel">
+            <label for="wf-quiz-title" class="field-label">Tiêu đề đề thi</label>
+            <input id="wf-quiz-title" class="wf-input" type="text" value="ĐỀ ÔN TẬP TRẮC NGHIỆM">
+
+            <div id="wf-file-dropzone" class="wf-file-dropzone">
+              <input type="file" id="wf-file-input" accept=".docx,.pdf,.txt" hidden>
+              <button type="button" id="wf-file-select-btn" class="wf-file-select-btn">
+                📂 Chọn file Word (.docx) / PDF
+              </button>
+              <div id="wf-file-name" class="wf-file-name" hidden>
+                <span id="wf-file-name-text"></span>
+                <button type="button" id="wf-file-remove-btn" class="wf-file-remove-btn" aria-label="Xóa file đã chọn">✕</button>
+              </div>
+            </div>
+
+            <label for="wf-quiz-input" class="field-label">Hoặc dán trực tiếp nội dung đề thô (tùy chọn):</label>
+            <textarea id="wf-quiz-input" class="wf-textarea" rows="8" placeholder="Dán toàn bộ đề trắc nghiệm từ web, PDF hoặc Word vào đây..."></textarea>
+            <div id="wf-input-stats" class="wf-input-stats" aria-live="polite">0 ký tự</div>
+
+            <label for="wf-answer-style" class="field-label">Kiểu đánh dấu đáp án đúng</label>
+            <select id="wf-answer-style" class="quiz-select">
+              <option value="bold" selected>In đậm đáp án đúng</option>
+              <option value="asterisk">Thêm dấu * ở đầu đáp án đúng (Chuẩn trộn đề)</option>
+              <option value="both">Cả hai (In đậm + dấu * ở đầu)</option>
+            </select>
+
+            <label class="wf-checkbox-row">
+              <input type="checkbox" id="wf-ai-solve-missing">
+              <span>Tự dùng AI giải &amp; đánh dấu đáp án nếu đề chưa có sẵn đáp án</span>
+            </label>
+
+            <button type="button" id="wf-process-quiz-btn" class="action-btn primary-action">
+              ✨ Chuẩn hóa &amp; Kiểm định Form Word
+            </button>
+            <div id="wf-validation-box" hidden role="status" aria-live="polite"></div>
+            <button type="button" id="wf-download-docx-btn" class="action-btn web-action" disabled>
+              📥 Tải file Word chuẩn (.docx)
+            </button>
+          </div>
+
+          <div id="wf-essay-panel" class="wf-essay-panel" role="tabpanel" hidden>
+            <div id="wf-essay-cover-fields" class="wf-essay-cover-fields">
+              <label for="wf-essay-faculty" class="field-label">Khoa / Viện</label>
+              <input id="wf-essay-faculty" class="wf-input" type="text" placeholder="Khoa / Viện đào tạo...">
+              <label for="wf-essay-type" class="field-label">Loại tiểu luận</label>
+              <input id="wf-essay-type" class="wf-input" type="text" value="Tiểu luận môn học">
+              <label for="wf-essay-subject" class="field-label">Tên môn học</label>
+              <input id="wf-essay-subject" class="wf-input" type="text" placeholder="Tên môn học...">
+              <label for="wf-essay-topic" class="field-label">Tên đề tài</label>
+              <input id="wf-essay-topic" class="wf-input" type="text" placeholder="Tên đề tài tiểu luận...">
+              <label for="wf-essay-group" class="field-label">Nhóm</label>
+              <input id="wf-essay-group" class="wf-input" type="text" placeholder="Tên / số nhóm (nếu có)...">
+              <label for="wf-essay-student" class="field-label">Danh sách sinh viên (mỗi dòng: Họ tên | MSSV)</label>
+              <textarea id="wf-essay-student" class="wf-input" rows="3" placeholder="Nguyễn Văn A | 123456789&#10;Trần Thị B | 987654321"></textarea>
+              <label for="wf-essay-class" class="field-label">Lớp</label>
+              <input id="wf-essay-class" class="wf-input" type="text" placeholder="Tên lớp...">
+              <label for="wf-essay-lecturer" class="field-label">Giảng viên hướng dẫn</label>
+              <input id="wf-essay-lecturer" class="wf-input" type="text" placeholder="Giảng viên hướng dẫn...">
+              <label for="wf-essay-date" class="field-label">Ngày</label>
+              <input id="wf-essay-date" class="wf-input" type="text" placeholder="Đà Nẵng, ngày ... tháng ... năm ...">
+            </div>
+
+            <div id="wf-essay-file-dropzone" class="wf-essay-file-dropzone">
+              <input type="file" id="wf-essay-file-input" accept=".docx,.txt" hidden>
+              <button type="button" id="wf-essay-file-select-btn" class="wf-file-select-btn">
+                📂 Chọn bản thảo Word (.docx) / TXT
+              </button>
+              <div id="wf-essay-file-name" class="wf-file-name" hidden>
+                <span id="wf-essay-file-name-text"></span>
+                <button type="button" id="wf-essay-file-remove-btn" class="wf-file-remove-btn" aria-label="Xóa bản thảo đã chọn">✕</button>
+              </div>
+            </div>
+
+            <label for="wf-essay-input" class="field-label">Nội dung bản thảo</label>
+            <textarea id="wf-essay-input" class="wf-textarea" rows="7" placeholder="Hoặc dán toàn bộ nội dung bản thảo tiểu luận vào đây..."></textarea>
+            <div id="wf-essay-input-stats" class="wf-input-stats" aria-live="polite">0 ký tự</div>
+
+            <button type="button" id="wf-process-essay-btn" class="action-btn primary-action">
+              ✨ Chuẩn hóa &amp; Kiểm định Tiểu luận
+            </button>
+            <div id="wf-essay-validation-box" hidden role="status" aria-live="polite"></div>
+            <button type="button" id="wf-download-essay-btn" class="action-btn web-action" disabled>
+              📥 Tải file Tiểu luận (.docx)
+            </button>
+          </div>
+
+          <div id="wf-cmu-panel" class="wf-cmu-panel" role="tabpanel" hidden>
+            <div class="wf-cmu-fields">
+              <label class="wf-cmu-field">
+                <span class="field-label">Tên môn học</span>
+                <input id="wf-cmu-course-name" class="wf-input" type="text" placeholder="Software Testing">
+              </label>
+              <label class="wf-cmu-field">
+                <span class="field-label">Mã môn học</span>
+                <input id="wf-cmu-course-code" class="wf-input" type="text" placeholder="CMU-SE 303 MIS">
+              </label>
+              <label class="wf-cmu-field">
+                <span class="field-label">Loại tài liệu</span>
+                <select id="wf-cmu-doc-type" class="quiz-select">
+                  <option value="HOMEWORK" selected>HOMEWORK</option>
+                  <option value="PROJECT REPORT">PROJECT REPORT</option>
+                  <option value="SRS DOCUMENT">SRS DOCUMENT</option>
+                </select>
+              </label>
+              <label class="wf-cmu-field">
+                <span class="field-label">Phiên bản</span>
+                <input id="wf-cmu-version" class="wf-input" type="text" value="Version 1.0">
+              </label>
+              <label class="wf-cmu-field">
+                <span class="field-label">Ngày nộp</span>
+                <input id="wf-cmu-date" class="wf-input" type="text" placeholder="Nov 12th, 2026">
+              </label>
+              <label class="wf-cmu-field wf-cmu-field-wide">
+                <span class="field-label">Tên đề tài báo cáo</span>
+                <input id="wf-cmu-title" class="wf-input" type="text" placeholder="Project report title">
+              </label>
+              <label class="wf-cmu-field">
+                <span class="field-label">Tên viết tắt dự án</span>
+                <input id="wf-cmu-acronym" class="wf-input" type="text" placeholder="CTBC">
+              </label>
+              <label class="wf-cmu-field">
+                <span class="field-label">Start Date</span>
+                <input id="wf-cmu-start-date" class="wf-input" type="text" placeholder="Project start date">
+              </label>
+              <label class="wf-cmu-field">
+                <span class="field-label">End Date</span>
+                <input id="wf-cmu-end-date" class="wf-input" type="text" placeholder="Project end date">
+              </label>
+              <label class="wf-cmu-field">
+                <span class="field-label">Created by</span>
+                <input id="wf-cmu-created-by" class="wf-input" type="text" placeholder="Doan Van Thien Hoang">
+              </label>
+              <label class="wf-cmu-field">
+                <span class="field-label">Full Name</span>
+                <input id="wf-cmu-fullname" class="wf-input" type="text" placeholder="Doan Van Thien Hoang">
+              </label>
+              <label class="wf-cmu-field">
+                <span class="field-label">Student ID</span>
+                <input id="wf-cmu-student-id" class="wf-input" type="text" placeholder="30211356528">
+              </label>
+              <label class="wf-cmu-field wf-cmu-field-wide">
+                <span class="field-label">Email &amp; SĐT liên hệ</span>
+                <input id="wf-cmu-contact" class="wf-input" type="text" placeholder="Email: ... | Tel: ...">
+              </label>
+              <label class="wf-cmu-field">
+                <span class="field-label">Mentor</span>
+                <input id="wf-cmu-mentor" class="wf-input" type="text" placeholder="Sanh, Tran Kim">
+              </label>
+              <label class="wf-cmu-field wf-cmu-field-wide">
+                <span class="field-label">Demo Link / GitHub URL (tùy chọn)</span>
+                <input id="wf-cmu-demo-link" class="wf-input" type="url" placeholder="https://github.com/...">
+              </label>
+            </div>
+
+            <div id="wf-cmu-file-dropzone" class="wf-cmu-file-dropzone">
+              <input type="file" id="wf-cmu-file-input" accept=".docx,.txt" hidden>
+              <button type="button" id="wf-cmu-file-select-btn" class="wf-file-select-btn">
+                📂 Chọn báo cáo Word (.docx) / TXT
+              </button>
+              <div id="wf-cmu-file-name" class="wf-file-name" hidden>
+                <span id="wf-cmu-file-name-text"></span>
+                <button type="button" id="wf-cmu-file-remove-btn" class="wf-file-remove-btn" aria-label="Xóa báo cáo đã chọn">✕</button>
+              </div>
+            </div>
+
+            <label for="wf-cmu-input" class="field-label">Nội dung báo cáo kỹ thuật</label>
+            <textarea id="wf-cmu-input" class="wf-textarea" rows="7" placeholder="Dán nội dung báo cáo kỹ thuật (1. Introduction, a)..., 2. Design...) vào đây..."></textarea>
+
+            <button type="button" id="wf-process-cmu-btn" class="action-btn primary-action">
+              ✨ Chuẩn hóa &amp; Kiểm định Báo cáo CMU
+            </button>
+            <div id="wf-cmu-validation-box" hidden role="status" aria-live="polite"></div>
+            <button type="button" id="wf-download-cmu-btn" class="action-btn web-action" disabled>
+              📥 Tải Báo cáo CMU (.docx)
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="view-history" class="app-view" aria-labelledby="current-view-title" hidden>
+      <div class="card">
+        <h2>Lịch sử Bộ đề</h2>
+        <p>Chọn một bộ đề đã lưu để xem lại câu hỏi và phần tóm tắt.</p>
+        <label for="study-history-select" class="field-label">Bộ đề đã tạo</label>
+        <div class="history-select-row">
+          <select id="study-history-select" class="history-select" aria-label="Lịch sử bộ đề đã tạo">
+            <option value="">-- Chọn bộ đề cũ để ôn lại --</option>
+          </select>
+          <button type="button" id="delete-history-btn" title="Xóa bộ đề đang chọn" aria-label="Xóa bộ đề đang chọn">🗑️</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="view-settings" class="app-view" aria-labelledby="current-view-title" hidden>
+      <div class="card">
+        <h2>Cài đặt API Key</h2>
+        <p>Nhập Gemini API Key để kích hoạt các tính năng AI.</p>
+        <div class="view-controls">
+          <label for="gemini-api-key" class="field-label">Gemini API Key</label>
+          <input type="password" id="gemini-api-key" placeholder="Nhập Gemini API Key (AIza...)" autocomplete="off" class="api-key-input">
+          <div class="save-key-row">
+            <button type="button" id="save-key-btn" class="action-btn primary-action save-key-action">Lưu API Key</button>
+            <span id="save-status" class="save-status" role="status" aria-live="polite" hidden>Đã lưu thành công!</span>
+          </div>
+        </div>
+      </div>
+      <div class="card settings-theme-card">
+        <h2>Giao diện &amp; Chủ đề (6 Themes)</h2>
+        <p>Chọn tông màu công nghệ hoặc sáng học thuật độ tương phản cao — đồng bộ tự động giữa Side Panel và Phòng luyện tập.</p>
+        <div class="view-controls">
+          <label for="theme-selector" class="field-label">Chủ đề hiển thị</label>
+          <select id="theme-selector" class="quiz-select theme-picker-select" aria-label="Chọn chủ đề giao diện"></select>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer id="sidebar-footer" class="app-footer" role="contentinfo">
+    <span class="app-footer-text">Author: Đoàn Văn Thiên Hoàng — Smart Study</span>
+  </footer>
+
+  <script src="assets/mammoth.browser.min.js"></script>
+  <script src="assets/docx.umd.js"></script>
+  <script src="sidebar.js"></script>
+</body>
+</html>
