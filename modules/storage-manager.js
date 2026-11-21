@@ -1,5 +1,5 @@
 // Tập trung hóa URL Backend: đổi sang https://<ten-service>.onrender.com khi deploy lên Render
-export const API_BASE_URL = 'http://127.0.0.1:8000';
+export const API_BASE_URL = 'https://smart-study-backend-v1.onrender.com';
 export const BACKEND_FETCH_TIMEOUT_MS = 65000;
 export const OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F'];
 
