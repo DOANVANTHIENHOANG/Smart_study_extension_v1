@@ -126,11 +126,21 @@ function syncWeakRetestButtonVisibility() {
   weakBtn.style.display = shouldHide ? 'none' : '';
 }
 
+function syncVocabOverviewVisibility() {
+  const showOverview = quizType === 'vocab' && activeMode === 'flashcard';
+  const masteryCard = document.getElementById('vocab-mastery-progress-card');
+  if (masteryCard) masteryCard.hidden = !showOverview;
+  const topicBar = document.getElementById('practice-topic-bar');
+  if (topicBar) {
+    topicBar.hidden = !showOverview || !allVocabCards.length;
+  }
+}
+
 function updateVocabMasteryProgressBar(vocabBankList = []) {
   const cardEl = document.getElementById('vocab-mastery-progress-card');
   if (!cardEl) return;
 
-  if (quizType !== 'vocab') {
+  if (quizType !== 'vocab' || activeMode !== 'flashcard') {
     cardEl.hidden = true;
     return;
   }
@@ -844,7 +854,7 @@ function playCountdownTone(step) {
     }
     const ctx = countdownAudioCtx;
     if (ctx.state === 'suspended') {
-      void ctx.resume().catch(() => {});
+      void ctx.resume().catch(() => { });
     }
 
     const now = ctx.currentTime;
@@ -1062,7 +1072,7 @@ async function seekYoutubeOriginalSegment(source) {
     if (matchingTab?.id) {
       await chrome.tabs.update(matchingTab.id, { active: true });
       if (matchingTab.windowId) {
-        await chrome.windows.update(matchingTab.windowId, { focused: true }).catch(() => {});
+        await chrome.windows.update(matchingTab.windowId, { focused: true }).catch(() => { });
       }
       try {
         await chrome.tabs.sendMessage(matchingTab.id, {
@@ -1853,7 +1863,7 @@ function renderTopicPills() {
   const pillsWrap = document.getElementById('practice-topic-pills');
   if (!topicBar || !pillsWrap) return;
 
-  if (quizType !== 'vocab' || !allVocabCards.length) {
+  if (quizType !== 'vocab' || activeMode !== 'flashcard' || !allVocabCards.length) {
     topicBar.hidden = true;
     return;
   }
@@ -1987,13 +1997,24 @@ async function enrichVocabInBatches(forceAll = false) {
   if (enrichBtn) enrichBtn.disabled = true;
 
   let completedCount = 0;
-  try {
-    for (let offset = 0; offset < pendingIndices.length; offset += ENRICH_BATCH_SIZE) {
-      const batchIndices = pendingIndices.slice(offset, offset + ENRICH_BATCH_SIZE);
-      setEnrichStatus(
-        `✨ Đang tạo minh họa ngữ nghĩa & mẹo nhớ (${Math.min(offset + batchIndices.length, pendingIndices.length)}/${pendingIndices.length})...`,
-        true
-      );
+  let failedIndices = [];
+  let quotaStopped = false;
+  let lastFailureKind = '';
+  let lastHttpStatus = 0;
+  let lastFailureDetail = '';
+
+  const processBatchList = async (indicesList, isRetryPass = false) => {
+    const batchFailures = [];
+    for (let offset = 0; offset < indicesList.length; offset += ENRICH_BATCH_SIZE) {
+      // Nhường băng thông API nếu người dùng đang tạo Hội thoại thực chiến để tránh xung đột 429/timeout
+      while (isGeneratingStory) {
+        await new Promise((resolve) => setTimeout(resolve, 350));
+      }
+      const batchIndices = indicesList.slice(offset, offset + ENRICH_BATCH_SIZE);
+      const progressLabel = isRetryPass
+        ? `🔄 Đang tự thử lại ${batchIndices.length} thẻ bị thiếu minh họa...`
+        : `✨ Đang tạo minh họa ngữ nghĩa & mẹo nhớ (${Math.min(offset + batchIndices.length, indicesList.length)}/${indicesList.length})...`;
+      setEnrichStatus(progressLabel, true);
 
       const batchPayload = batchIndices.map((idx) => {
         const card = allVocabCards[idx];
@@ -2010,8 +2031,9 @@ async function enrichVocabInBatches(forceAll = false) {
       });
 
       const controller = new AbortController();
+      const enrichTimeoutSeconds = Math.round(ENRICH_TIMEOUT_MS / 1000);
       const timeoutId = setTimeout(
-        () => controller.abort(new Error('Quá thời gian chờ 45 giây cho lô từ vựng này')),
+        () => controller.abort(new Error(`Quá thời gian chờ ${enrichTimeoutSeconds} giây cho lô từ vựng này`)),
         ENRICH_TIMEOUT_MS
       );
 
@@ -2033,16 +2055,23 @@ async function enrichVocabInBatches(forceAll = false) {
             quotaReached = true;
             throw new Error(QUOTA_FALLBACK_GUIDANCE);
           }
-          throw new Error(errData?.detail || `HTTP ${response.status}`);
+          lastHttpStatus = response.status;
+          lastFailureDetail = String(errData?.detail || '').trim();
+          lastFailureKind = response.status >= 500 ? 'server' : 'client';
+          const httpErr = new Error(lastFailureDetail || `HTTP ${response.status}`);
+          httpErr.isHttpError = true;
+          throw httpErr;
         }
 
         const data = await response.json().catch(() => null);
         const enrichedList = Array.isArray(data?.items) ? data.items : [];
         let currentCardUpdated = false;
+        const returnedIdxSet = new Set();
 
         enrichedList.forEach((enriched) => {
           const targetIdx = Number(enriched?.index);
           if (!Number.isInteger(targetIdx) || !allVocabCards[targetIdx]) return;
+          returnedIdxSet.add(targetIdx);
           const target = allVocabCards[targetIdx];
           if (enriched.ipa) target.ipa = String(enriched.ipa).trim();
           if (enriched.meaning) {
@@ -2067,7 +2096,14 @@ async function enrichVocabInBatches(forceAll = false) {
           if (activeQuiz[flashcardIndex] === target) currentCardUpdated = true;
         });
 
-        completedCount += batchIndices.length;
+        completedCount += returnedIdxSet.size;
+        // Ghi nhận các thẻ trong lô không được AI trả về để tự retry
+        batchIndices.forEach((idx) => {
+          if (!returnedIdxSet.has(idx)) {
+            batchFailures.push(idx);
+          }
+        });
+
         await syncEnrichedCardsToStorage();
         renderTopicPills();
 
@@ -2076,27 +2112,74 @@ async function enrichVocabInBatches(forceAll = false) {
         }
       } catch (batchError) {
         if (quotaReached || isQuotaOrRateLimitError(batchError?.message)) {
+          quotaStopped = true;
           setEnrichStatus(QUOTA_FALLBACK_GUIDANCE, true);
-          return;
+          return batchFailures;
         }
-        // Nếu 1 lô gặp lỗi hoặc timeout, bỏ qua an toàn lô đó và tiếp tục các lô từ còn lại
-        console.warn(`Bỏ qua lô từ vựng (${batchIndices.join(', ')}) do lỗi:`, batchError);
+        if (!batchError?.isHttpError) {
+          const rawMsg = String(batchError?.message || '');
+          if (batchError?.name === 'AbortError' || /quá thời gian chờ|timeout/i.test(rawMsg)) {
+            lastFailureKind = 'timeout';
+          } else if (batchError instanceof TypeError || /failed to fetch|networkerror|load failed/i.test(rawMsg)) {
+            lastFailureKind = 'connection';
+          } else if (!lastFailureKind) {
+            lastFailureKind = 'unknown';
+            lastFailureDetail = rawMsg;
+          }
+        }
+        console.warn(`Lô từ vựng (${batchIndices.join(', ')}) gặp lỗi, sẽ tự thử lại:`, batchError);
+        batchFailures.push(...batchIndices);
       } finally {
         clearTimeout(timeoutId);
       }
     }
+    return batchFailures;
+  };
 
-    if (completedCount > 0) {
-      setEnrichStatus(`✅ Đã hoàn tất minh họa ngữ nghĩa & mẹo nhớ cho ${completedCount} thẻ!`, true);
+  try {
+    failedIndices = await processBatchList(pendingIndices, false);
+
+    // Tự động thử lại 1 lượt cho các thẻ bị lỗi/thiếu ở lượt 1 (tránh sót 5/15 thẻ như trước)
+    if (!quotaStopped && failedIndices.length > 0) {
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+      failedIndices = await processBatchList(failedIndices, true);
+    }
+
+    if (quotaStopped) return;
+
+    const totalTarget = pendingIndices.length;
+    if (completedCount >= totalTarget && totalTarget > 0) {
+      setEnrichStatus(`✅ Đã hoàn tất minh họa ngữ nghĩa & mẹo nhớ cho đủ ${completedCount}/${totalTarget} thẻ!`, true);
+    } else if (completedCount > 0) {
+      const missingCount = Math.max(0, totalTarget - completedCount);
+      setEnrichStatus(
+        `⚠️ Đã tạo minh họa ${completedCount}/${totalTarget} thẻ (còn ${missingCount} thẻ — bấm "Tạo ví dụ & Ảnh phác thảo" để bổ sung nốt).`,
+        true
+      );
+    } else if (lastFailureKind === 'connection') {
+      setEnrichStatus(
+        '⚠️ Không thể kết nối tới máy chủ xử lý. Vui lòng kiểm tra kết nối mạng hoặc đảm bảo dịch vụ Backend đang hoạt động rồi thử lại.',
+        true
+      );
+    } else if (lastFailureKind === 'timeout') {
+      setEnrichStatus(
+        `⚠️ Quá thời gian chờ phản hồi (${Math.round(ENRICH_TIMEOUT_MS / 1000)} giây). Máy chủ có thể đang khởi động lại hoặc xử lý chậm, vui lòng thử lại.`,
+        true
+      );
+    } else if (lastFailureKind === 'client' && lastFailureDetail) {
+      setEnrichStatus(`⚠️ ${lastFailureDetail}`, true);
     } else {
-      setEnrichStatus('⚠️ Máy chủ AI đang bận, bạn có thể bấm thử lại sau ít giây.', true);
+      const statusHint = lastHttpStatus >= 500 ? ` (HTTP ${lastHttpStatus})` : '';
+      setEnrichStatus(`⚠️ Máy chủ xử lý gặp sự cố tạm thời${statusHint}, bạn có thể bấm thử lại sau ít giây.`, true);
     }
   } catch (error) {
     console.warn('Lỗi khi làm giàu từ vựng theo lô:', error);
     setEnrichStatus(`⚠️ Tạm dừng làm giàu: ${error.message}`, true);
   } finally {
     isEnrichingVocab = false;
-    setPracticeLogoProcessing(false);
+    if (!isGeneratingStory) {
+      setPracticeLogoProcessing(false);
+    }
     if (enrichBtn) enrichBtn.disabled = false;
   }
 }
@@ -2234,9 +2317,14 @@ function flipFlashcard() {
 // --- SPRINT 12: Chế độ 🎭 Hội thoại thực chiến (Micro-Story & Roleplay) & Speaker Voices ---
 function setStoryStatus(message, isVisible = true) {
   const statusEl = document.getElementById('story-status-msg');
-  if (!statusEl) return;
-  statusEl.textContent = message;
-  statusEl.hidden = !isVisible || !message;
+  if (statusEl) {
+    statusEl.textContent = message;
+    statusEl.hidden = !isVisible || !message;
+  }
+  const skeletonEl = document.getElementById('story-loading-skeleton');
+  if (skeletonEl) {
+    skeletonEl.hidden = !(isVisible && isGeneratingStory);
+  }
 }
 
 function renderStoryLineWithClozeOrHighlight(container, sentence, targetWords) {
@@ -2297,15 +2385,19 @@ function renderStoryView() {
   if (!dialogueList || !currentStoryData) return;
 
   if (titleEl) {
-    titleEl.textContent = `🎭 ${currentStoryData.scenario_title || 'Hội thoại Thực chiến'}`;
+    titleEl.textContent = currentStoryData.scenario_title || 'Hội thoại Thực chiến Đa Ngữ cảnh';
   }
   if (toggleViBtn) {
-    toggleViBtn.textContent = isStoryShowVi ? '👁️ Ẩn nghĩa tiếng Việt' : '👁️ Hiện nghĩa tiếng Việt';
+    const viSpan = toggleViBtn.querySelector('span');
+    const viText = isStoryShowVi ? 'Ẩn nghĩa Việt' : 'Hiện nghĩa Việt';
+    if (viSpan) viSpan.textContent = viText;
+    else toggleViBtn.textContent = viText;
   }
   if (toggleClozeBtn) {
-    toggleClozeBtn.textContent = isStoryClozeMode
-      ? '🧩 Tắt đục lỗ (Hiện từ gốc)'
-      : '🧩 Bật đục lỗ điền từ (Cloze Mode)';
+    const clozeSpan = toggleClozeBtn.querySelector('span');
+    const clozeText = isStoryClozeMode ? 'Tắt Cloze' : 'Đục lỗ (Cloze)';
+    if (clozeSpan) clozeSpan.textContent = clozeText;
+    else toggleClozeBtn.textContent = clozeText;
   }
 
   if (wordsBar) {
@@ -2433,14 +2525,68 @@ function buildFallbackDialogueFromCards(pickedCards, pickedWords, topicName) {
   };
 }
 
-async function generateAndRenderStory(forceRegenerate = false) {
-  if (isGeneratingStory || !activeQuiz.length) return;
-  if (currentStoryData && !forceRegenerate && currentStoryData.topicKey === selectedTopicFilter) {
-    renderStoryView();
-    return;
+const STORY_BATCH_SIZE = 6;
+let currentStoryBatchIndex = 0;
+let lastStoryTopicForBatch = '';
+const storyBatchCache = new Map();
+const MAX_STORY_BATCH_CACHE = 20;
+
+function getPrioritizedStoryCards() {
+  if (!Array.isArray(activeQuiz) || !activeQuiz.length) return [];
+  // Ưu tiên đẩy các từ chưa thuộc (Box 0–1) lên các cụm đầu để học đúng từ yếu trước
+  return activeQuiz
+    .map((card, originalIndex) => {
+      const boxVal = Number(card?.leitnerBox ?? card?.srsBox ?? card?.box);
+      const priority = Number.isFinite(boxVal) ? boxVal : 0;
+      return { card, originalIndex, priority };
+    })
+    .sort((a, b) => (a.priority !== b.priority ? a.priority - b.priority : a.originalIndex - b.originalIndex))
+    .map((item) => item.card);
+}
+
+function syncStoryBatchSelector(totalWords) {
+  const batchSelect = document.getElementById('story-batch-select');
+  const totalBatches = Math.max(1, Math.ceil(totalWords / STORY_BATCH_SIZE));
+  if (currentStoryBatchIndex >= totalBatches) {
+    currentStoryBatchIndex = 0;
+  }
+  if (!batchSelect) return totalBatches;
+
+  if (totalBatches <= 1) {
+    batchSelect.hidden = true;
+    batchSelect.replaceChildren();
+    return totalBatches;
   }
 
-  const pickedCards = activeQuiz.slice(0, 6);
+  batchSelect.hidden = false;
+  batchSelect.replaceChildren();
+  for (let i = 0; i < totalBatches; i += 1) {
+    const startNum = i * STORY_BATCH_SIZE + 1;
+    const endNum = Math.min(totalWords, (i + 1) * STORY_BATCH_SIZE);
+    const opt = document.createElement('option');
+    opt.value = String(i);
+    opt.textContent = `Cụm ${i + 1}/${totalBatches} (Từ ${startNum}–${endNum})`;
+    batchSelect.appendChild(opt);
+  }
+  batchSelect.value = String(currentStoryBatchIndex);
+  return totalBatches;
+}
+
+async function generateAndRenderStory(forceRegenerate = false) {
+  if (isGeneratingStory || !activeQuiz.length) return;
+
+  if (lastStoryTopicForBatch !== selectedTopicFilter) {
+    currentStoryBatchIndex = 0;
+    lastStoryTopicForBatch = selectedTopicFilter;
+  }
+
+  const prioritizedCards = getPrioritizedStoryCards();
+  const totalBatches = syncStoryBatchSelector(prioritizedCards.length);
+  const requestTopicFilter = selectedTopicFilter;
+  const requestBatchIndex = currentStoryBatchIndex;
+  const startIdx = requestBatchIndex * STORY_BATCH_SIZE;
+  const pickedCards = prioritizedCards.slice(startIdx, startIdx + STORY_BATCH_SIZE);
+
   const pickedWords = pickedCards
     .map((card) => {
       const options = normalizePracticeOptions(getSafeRawOptions(card));
@@ -2456,27 +2602,72 @@ async function generateAndRenderStory(forceRegenerate = false) {
 
   if (!pickedWords.length) return;
 
+  const batchKey = `${requestTopicFilter}::${requestBatchIndex}::${pickedWords.map((w) => w.word.toLowerCase()).join('|')}`;
+  if (!forceRegenerate && storyBatchCache.has(batchKey)) {
+    currentStoryData = storyBatchCache.get(batchKey);
+    setStoryStatus('', false);
+    renderStoryView();
+    return;
+  }
+
+  if (currentStoryData && !forceRegenerate && currentStoryData.batchKey === batchKey) {
+    setStoryStatus('', false);
+    renderStoryView();
+    return;
+  }
+
   const topicName =
-    selectedTopicFilter !== 'ALL'
-      ? selectedTopicFilter
+    requestTopicFilter !== 'ALL'
+      ? requestTopicFilter
       : cleanTopicLabel(pickedCards[0]?.topic || quizTitle || 'General English');
 
-  const { geminiApiKey } = await chrome.storage.local.get('geminiApiKey').catch(() => ({}));
-  const cleanKey = String(geminiApiKey || '').trim();
+  const batchSelectEl = document.getElementById('story-batch-select');
+  const wasBatchSelectDisabled = Boolean(batchSelectEl?.disabled);
+  const regenBtn = document.getElementById('story-regenerate-btn');
+  const wasRegenBtnDisabled = Boolean(regenBtn?.disabled);
 
   isGeneratingStory = true;
+  currentStoryData = null;
   setPracticeLogoProcessing(true);
-  const regenBtn = document.getElementById('story-regenerate-btn');
   if (regenBtn) regenBtn.disabled = true;
-  setStoryStatus(`⏳ AI đang ghép ${pickedWords.length} từ vựng chủ đề "${topicName}" thành kịch bản hội thoại thực chiến...`, true);
+  if (batchSelectEl) batchSelectEl.disabled = true;
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(
-    () => controller.abort(new Error('Quá thời gian chờ 45 giây khi tạo hội thoại')),
-    ENRICH_TIMEOUT_MS
+  // Xóa nội dung hội thoại của cụm/chủ đề cũ ngay khi bắt đầu tạo mới để không hiển thị nhầm kết quả cũ
+  const titleEl = document.getElementById('story-scenario-title');
+  if (titleEl) titleEl.textContent = 'Hội thoại Thực chiến Đa Ngữ cảnh';
+  const wordsBar = document.getElementById('story-target-words-bar');
+  if (wordsBar) wordsBar.replaceChildren();
+  const dialogueList = document.getElementById('story-dialogue-list');
+  if (dialogueList) dialogueList.replaceChildren();
+  const clozeActions = document.getElementById('story-cloze-actions');
+  if (clozeActions) clozeActions.hidden = true;
+  const clozeScore = document.getElementById('story-cloze-score');
+  if (clozeScore) clozeScore.textContent = '';
+  const roleplayBox = document.getElementById('story-roleplay-box');
+  if (roleplayBox) roleplayBox.hidden = true;
+  const pendingFeedbackEl = document.getElementById('story-roleplay-feedback');
+  if (pendingFeedbackEl) pendingFeedbackEl.hidden = true;
+
+  const batchPrefix = totalBatches > 1 ? `Cụm ${requestBatchIndex + 1}/${totalBatches} (` : '';
+  const batchSuffix = totalBatches > 1 ? ')' : '';
+  setStoryStatus(
+    `⏳ AI đang ghép ${batchPrefix}${pickedWords.length} từ vựng${batchSuffix} chủ đề "${topicName}" thành kịch bản hội thoại thực chiến...`,
+    true
   );
 
+  let timeoutId = null;
+
   try {
+    const { geminiApiKey } = await chrome.storage.local.get('geminiApiKey').catch(() => ({}));
+    const cleanKey = String(geminiApiKey || '').trim();
+
+    const controller = new AbortController();
+    const storyTimeoutSeconds = Math.round(ENRICH_TIMEOUT_MS / 1000);
+    timeoutId = setTimeout(
+      () => controller.abort(new Error(`Quá thời gian chờ ${storyTimeoutSeconds} giây khi tạo hội thoại`)),
+      ENRICH_TIMEOUT_MS
+    );
+
     const response = await fetch(BACKEND_SYNTHESIZE_STORY_URL, {
       method: 'POST',
       headers: buildApiHeaders(cleanKey),
@@ -2499,8 +2690,20 @@ async function generateAndRenderStory(forceRegenerate = false) {
     currentStoryData = {
       ...data,
       pickedWords,
-      topicKey: selectedTopicFilter
+      topicKey: requestTopicFilter,
+      batchKey
     };
+    if (storyBatchCache.has(batchKey)) storyBatchCache.delete(batchKey);
+    storyBatchCache.set(batchKey, currentStoryData);
+    while (storyBatchCache.size > MAX_STORY_BATCH_CACHE) {
+      const oldestKey = storyBatchCache.keys().next().value;
+      storyBatchCache.delete(oldestKey);
+    }
+    isGeneratingStory = false;
+    if (selectedTopicFilter === requestTopicFilter) {
+      currentStoryBatchIndex = requestBatchIndex;
+      if (batchSelectEl && !batchSelectEl.hidden) batchSelectEl.value = String(requestBatchIndex);
+    }
     setStoryStatus('', false);
     const feedbackEl = document.getElementById('story-roleplay-feedback');
     if (feedbackEl) feedbackEl.hidden = true;
@@ -2509,7 +2712,16 @@ async function generateAndRenderStory(forceRegenerate = false) {
     renderStoryView();
   } catch (error) {
     console.warn('Chuyển sang kịch bản hội thoại mẫu tương tác (buildFallbackDialogueFromCards):', error);
-    currentStoryData = buildFallbackDialogueFromCards(pickedCards, pickedWords, topicName);
+    isGeneratingStory = false;
+    currentStoryData = {
+      ...buildFallbackDialogueFromCards(pickedCards, pickedWords, topicName),
+      topicKey: requestTopicFilter,
+      batchKey
+    };
+    if (selectedTopicFilter === requestTopicFilter) {
+      currentStoryBatchIndex = requestBatchIndex;
+      if (batchSelectEl && !batchSelectEl.hidden) batchSelectEl.value = String(requestBatchIndex);
+    }
     setStoryStatus(
       isQuotaOrRateLimitError(error?.message)
         ? QUOTA_FALLBACK_GUIDANCE
@@ -2522,10 +2734,15 @@ async function generateAndRenderStory(forceRegenerate = false) {
     if (roleplayInput) roleplayInput.value = '';
     renderStoryView();
   } finally {
-    clearTimeout(timeoutId);
+    if (timeoutId !== null) clearTimeout(timeoutId);
     isGeneratingStory = false;
-    setPracticeLogoProcessing(false);
-    if (regenBtn) regenBtn.disabled = false;
+    const skeletonEl = document.getElementById('story-loading-skeleton');
+    if (skeletonEl) skeletonEl.hidden = true;
+    if (!isEnrichingVocab) {
+      setPracticeLogoProcessing(false);
+    }
+    if (regenBtn) regenBtn.disabled = wasRegenBtnDisabled;
+    if (batchSelectEl) batchSelectEl.disabled = wasBatchSelectDisabled;
   }
 }
 
@@ -2575,10 +2792,18 @@ async function evaluateStoryRoleplayResponse() {
   feedbackEl.textContent = '⏳ AI đang chấm phản xạ tình huống của bạn...';
   feedbackEl.hidden = false;
 
+  const controller = new AbortController();
+  const roleplayTimeoutSeconds = Math.round(FETCH_TIMEOUT_MS / 1000);
+  const timeoutId = setTimeout(
+    () => controller.abort(new Error(`Quá thời gian chờ ${roleplayTimeoutSeconds} giây khi chấm phản xạ.`)),
+    FETCH_TIMEOUT_MS
+  );
+
   try {
     const response = await fetch(BACKEND_GRADE_SENTENCE_URL, {
       method: 'POST',
       headers: buildApiHeaders(cleanKey),
+      signal: controller.signal,
       body: JSON.stringify({
         word: targetWordsList,
         pos: 'roleplay',
@@ -2598,10 +2823,18 @@ async function evaluateStoryRoleplayResponse() {
     }
     feedbackEl.textContent = formatGradeSentenceFeedback(data);
   } catch (error) {
-    feedbackEl.textContent = isQuotaOrRateLimitError(error?.message)
-      ? QUOTA_FALLBACK_GUIDANCE
-      : `❌ Không thể chấm phản xạ lúc này: ${error.message}`;
+    const rawMsg = String(error?.message || '');
+    if (isQuotaOrRateLimitError(rawMsg)) {
+      feedbackEl.textContent = QUOTA_FALLBACK_GUIDANCE;
+    } else if (error?.name === 'AbortError' || /quá thời gian chờ/i.test(rawMsg)) {
+      feedbackEl.textContent = `⚠️ Quá thời gian chờ (${roleplayTimeoutSeconds} giây) khi chấm phản xạ. Vui lòng thử lại.`;
+    } else if (error instanceof TypeError || /failed to fetch|networkerror|load failed/i.test(rawMsg)) {
+      feedbackEl.textContent = '⚠️ Không thể kết nối tới máy chủ xử lý. Vui lòng kiểm tra kết nối mạng hoặc dịch vụ Backend rồi thử lại.';
+    } else {
+      feedbackEl.textContent = `❌ Không thể chấm phản xạ lúc này: ${rawMsg}`;
+    }
   } finally {
+    clearTimeout(timeoutId);
     if (checkBtn) checkBtn.disabled = false;
   }
 }
@@ -2617,6 +2850,7 @@ async function setPracticeMode(mode, persist = true) {
   }
   updateModeButtons();
   syncWeakRetestButtonVisibility();
+  syncVocabOverviewVisibility();
   document.getElementById('practice-result-panel').hidden = true;
   document.getElementById('quiz-mode-panel').hidden = activeMode !== 'quiz';
   document.getElementById('flashcard-mode-panel').hidden = activeMode !== 'flashcard';
@@ -2720,7 +2954,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   const enrichBtn = document.getElementById('flashcard-enrich-btn');
   if (enrichBtn) {
     enrichBtn.addEventListener('click', () => {
-      void enrichVocabInBatches(true);
+      // Nếu còn thẻ chưa có minh họa thì ưu tiên bổ sung đúng các thẻ còn thiếu trước (tránh gọi lại thừa các thẻ đã xong)
+      const hasMissing = allVocabCards.some(
+        (card) => !(String(card?.example_en || card?.contextSentence || '').trim() && String(card?.memory_hook || '').trim())
+      );
+      void enrichVocabInBatches(!hasMissing);
     });
   }
   const extractMoreBtn = document.getElementById('extract-more-video-vocab-btn');
@@ -2838,6 +3076,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   // Sự kiện chế độ 🎭 Hội thoại thực chiến (Micro-Story & Roleplay)
+  const storyBatchSelect = document.getElementById('story-batch-select');
+  if (storyBatchSelect) {
+    storyBatchSelect.addEventListener('change', () => {
+      if (isGeneratingStory || storyBatchSelect.disabled) {
+        storyBatchSelect.value = String(currentStoryBatchIndex);
+        return;
+      }
+      const nextIdx = Number(storyBatchSelect.value);
+      if (!Number.isInteger(nextIdx) || nextIdx < 0) return;
+      currentStoryBatchIndex = nextIdx;
+      stopSpeechSequence();
+      void generateAndRenderStory(false);
+    });
+  }
   const storyRegenerateBtn = document.getElementById('story-regenerate-btn');
   if (storyRegenerateBtn) {
     storyRegenerateBtn.addEventListener('click', () => {
@@ -3045,6 +3297,31 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
   }
 
+  const toggleAnalyticsBtn = document.getElementById('toggle-analytics-btn');
+  const analyticsDetails = document.getElementById('analytics-dashboard-details');
+  if (toggleAnalyticsBtn && analyticsDetails) {
+    const syncAnalyticsToggleUi = (isVisible) => {
+      analyticsDetails.hidden = !isVisible;
+      analyticsDetails.open = isVisible;
+      toggleAnalyticsBtn.classList.toggle('active', isVisible);
+      toggleAnalyticsBtn.setAttribute('aria-expanded', String(isVisible));
+    };
+
+    toggleAnalyticsBtn.addEventListener('click', () => {
+      const nextVisible = analyticsDetails.hidden;
+      syncAnalyticsToggleUi(nextVisible);
+      if (nextVisible) {
+        void renderAnalyticsDashboard();
+      }
+    });
+
+    analyticsDetails.addEventListener('toggle', () => {
+      if (!analyticsDetails.open && !analyticsDetails.hidden) {
+        syncAnalyticsToggleUi(false);
+      }
+    });
+  }
+
   if (chrome.storage?.onChanged) {
     chrome.storage.onChanged.addListener((changes, areaName) => {
       if (areaName !== 'local') return;
@@ -3103,6 +3380,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       void renderAnalyticsDashboard();
       renderTopicPills();
       renderCardJumpOptions();
+      syncVocabOverviewVisibility();
       // Hiển thị sẵn thẻ đầu tiên trong 0ms, chạy nền làm giàu 15 thẻ/lượt và chạy đếm ngược đồng bộ
       renderFlashcard(false);
       void enrichVocabInBatches(false);

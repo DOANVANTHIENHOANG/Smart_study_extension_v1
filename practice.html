@@ -45,13 +45,17 @@
       <div class="theme-picker-wrap">
         <select id="practice-theme-selector" class="theme-picker-select" aria-label="Chọn chủ đề giao diện"></select>
       </div>
+      <button type="button" id="toggle-analytics-btn" class="practice-secondary-btn analytics-toggle-btn" aria-expanded="false" aria-controls="analytics-dashboard-details" title="Xem Tổng quan Tiến độ Học tập & Biểu đồ">
+        <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 16v-5M12 16V8M17 16v-3"/></svg>
+        <span>Tiến độ</span>
+      </button>
       <button type="button" id="practice-weak-retest-btn" class="weak-retest-btn" title="Luyện lại các câu hay sai theo trọng số">🎯 Ôn câu hay sai (0)</button>
       <button type="button" id="practice-exit-btn" class="practice-exit-btn" aria-label="Thoát phòng luyện tập">✕</button>
     </div>
   </header>
 
   <main class="practice-main">
-    <details id="analytics-dashboard-details" class="analytics-dashboard">
+    <details id="analytics-dashboard-details" class="analytics-dashboard" hidden>
       <summary class="analytics-summary">
         <span class="analytics-summary-title">📊 Tổng quan Tiến độ Học tập</span>
         <span id="analytics-summary-pill" class="analytics-summary-pill">🔥 0 ngày • 0 từ Box 4</span>
@@ -270,26 +274,71 @@
     <section id="story-mode-panel" class="practice-panel" hidden>
       <article class="story-card">
         <div class="story-header">
-          <div>
+          <div class="story-title-block">
             <span class="practice-eyebrow">MICRO-STORY &amp; ROLEPLAY</span>
-            <h2 id="story-scenario-title" class="story-scenario-title">🎭 Hội thoại Thực chiến Đa Ngữ cảnh</h2>
+            <h2 id="story-scenario-title" class="story-scenario-title">Hội thoại Thực chiến Đa Ngữ cảnh</h2>
           </div>
           <div class="story-toolbar">
-            <button type="button" id="story-regenerate-btn" class="practice-primary-btn">✨ Tạo hội thoại mới</button>
-            <button type="button" id="story-speak-all-btn" class="practice-secondary-btn">🔊 Nghe cả đoạn</button>
-            <button type="button" id="stop-dialogue-btn" class="practice-secondary-btn story-stop-btn" hidden>⏹ Dừng</button>
-            <div id="story-speed-group" class="story-speed-group" role="group" aria-label="Tốc độ giọng đọc hội thoại">
-              <button type="button" class="story-speed-btn" data-rate="0.5">0.5x</button>
-              <button type="button" class="story-speed-btn active" data-rate="1">1x</button>
-              <button type="button" class="story-speed-btn" data-rate="2">2x</button>
+            <div class="story-toolbar-primary">
+              <select id="story-batch-select" class="story-batch-select" aria-label="Chọn cụm từ vựng cho hội thoại" hidden></select>
+              <button type="button" id="story-regenerate-btn" class="practice-primary-btn">
+                <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/></svg>
+                <span>Tạo hội thoại mới</span>
+              </button>
+              <div class="story-audio-cluster">
+                <button type="button" id="story-speak-all-btn" class="practice-secondary-btn story-audio-btn">
+                  <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
+                  <span>Nghe cả đoạn</span>
+                </button>
+                <button type="button" id="stop-dialogue-btn" class="practice-secondary-btn story-stop-btn" hidden>
+                  <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+                  <span>Dừng</span>
+                </button>
+                <div id="story-speed-group" class="story-speed-group" role="group" aria-label="Tốc độ giọng đọc hội thoại">
+                  <button type="button" class="story-speed-btn" data-rate="0.5">0.5x</button>
+                  <button type="button" class="story-speed-btn active" data-rate="1">1x</button>
+                  <button type="button" class="story-speed-btn" data-rate="2">2x</button>
+                </div>
+              </div>
             </div>
-            <button type="button" id="story-toggle-vi-btn" class="practice-secondary-btn">👁️ Ẩn/Hiện nghĩa tiếng Việt</button>
-            <button type="button" id="story-toggle-cloze-btn" class="practice-secondary-btn">🧩 Bật đục lỗ điền từ (Cloze Mode)</button>
+            <div class="story-toolbar-toggles">
+              <button type="button" id="story-toggle-vi-btn" class="practice-secondary-btn story-toggle-pill">
+                <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                <span>Nghĩa Việt</span>
+              </button>
+              <button type="button" id="story-toggle-cloze-btn" class="practice-secondary-btn story-toggle-pill">
+                <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg>
+                <span>Đục lỗ (Cloze)</span>
+              </button>
+            </div>
           </div>
         </div>
 
         <div id="story-target-words-bar" class="story-target-words-bar"></div>
         <div id="story-status-msg" class="story-status-msg" role="status" aria-live="polite" hidden></div>
+        <div id="story-loading-skeleton" class="story-skeleton-wrap" aria-hidden="true" hidden>
+          <div class="story-skeleton-row is-left">
+            <div class="story-skeleton-avatar"></div>
+            <div class="story-skeleton-bubble">
+              <span class="story-skeleton-line w-85"></span>
+              <span class="story-skeleton-line w-60"></span>
+            </div>
+          </div>
+          <div class="story-skeleton-row is-right">
+            <div class="story-skeleton-bubble">
+              <span class="story-skeleton-line w-80"></span>
+              <span class="story-skeleton-line w-45"></span>
+            </div>
+            <div class="story-skeleton-avatar"></div>
+          </div>
+          <div class="story-skeleton-row is-left">
+            <div class="story-skeleton-avatar"></div>
+            <div class="story-skeleton-bubble">
+              <span class="story-skeleton-line w-75"></span>
+              <span class="story-skeleton-line w-55"></span>
+            </div>
+          </div>
+        </div>
         <div id="story-dialogue-list" class="story-dialogue-list" aria-live="polite"></div>
 
         <div id="story-cloze-actions" class="story-cloze-actions" hidden>

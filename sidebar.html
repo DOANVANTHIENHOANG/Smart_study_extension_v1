@@ -241,11 +241,10 @@
         <h2>Tóm tắt YouTube</h2>
         <p>Tự động trích xuất tiêu đề, phụ đề và tóm tắt nội dung video YouTube đang xem.</p>
         <div class="view-controls">
-          <select id="yt-summary-level" class="quiz-select" aria-label="Mức độ tóm tắt video">
-            <option value="medium" selected>Tóm tắt: Ý chính (Kèm mốc thời gian)</option>
-            <option value="short">Tóm tắt: Siêu ngắn (1–2 câu cốt lõi)</option>
-            <option value="detailed">Tóm tắt: Chi tiết (Đầy đủ từng phần)</option>
-            <option value="simple">Tóm tắt: Dễ hiểu (Giải thích thuật ngữ + ví dụ)</option>
+          <select id="yt-summary-level" class="quiz-select" aria-label="Chế độ học và tóm tắt video">
+            <option value="simple" selected>Dễ hiểu — Ngôn ngữ gần gũi, giải nghĩa &amp; ví dụ</option>
+            <option value="medium">Trung bình — Cốt lõi cân bằng, cơ chế &amp; liên hệ</option>
+            <option value="detailed">Chuyên sâu — Bản chất Why/How, điều kiện &amp; phân biệt</option>
           </select>
           <button type="button" id="summarize-yt-btn" class="action-btn primary-action">
             <svg class="ui-icon" viewBox="0 0 24 24" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg>
@@ -318,26 +317,41 @@
           </div>
 
           <div id="wf-essay-panel" class="wf-essay-panel" role="tabpanel" hidden>
-            <div id="wf-essay-cover-fields" class="wf-essay-cover-fields">
-              <label for="wf-essay-faculty" class="field-label">Khoa / Viện</label>
-              <input id="wf-essay-faculty" class="wf-input" type="text" placeholder="Khoa / Viện đào tạo...">
-              <label for="wf-essay-type" class="field-label">Loại tiểu luận</label>
-              <input id="wf-essay-type" class="wf-input" type="text" value="Tiểu luận môn học">
+            <div class="wf-quick-fields">
+              <div class="wf-scope-row">
+                <span class="field-label">Hình thức</span>
+                <div class="wf-scope-pills" role="group" aria-label="Hình thức làm tiểu luận">
+                  <button type="button" class="wf-scope-pill active" data-essay-scope="group" aria-pressed="true">Làm nhóm</button>
+                  <button type="button" class="wf-scope-pill" data-essay-scope="individual" aria-pressed="false">Cá nhân</button>
+                </div>
+              </div>
               <label for="wf-essay-subject" class="field-label">Tên môn học</label>
               <input id="wf-essay-subject" class="wf-input" type="text" placeholder="Tên môn học...">
               <label for="wf-essay-topic" class="field-label">Tên đề tài</label>
               <input id="wf-essay-topic" class="wf-input" type="text" placeholder="Tên đề tài tiểu luận...">
-              <label for="wf-essay-group" class="field-label">Nhóm</label>
-              <input id="wf-essay-group" class="wf-input" type="text" placeholder="Tên / số nhóm (nếu có)...">
-              <label for="wf-essay-student" class="field-label">Danh sách sinh viên (mỗi dòng: Họ tên | MSSV)</label>
-              <textarea id="wf-essay-student" class="wf-input" rows="3" placeholder="Nguyễn Văn A | 123456789&#10;Trần Thị B | 987654321"></textarea>
-              <label for="wf-essay-class" class="field-label">Lớp</label>
-              <input id="wf-essay-class" class="wf-input" type="text" placeholder="Tên lớp...">
               <label for="wf-essay-lecturer" class="field-label">Giảng viên hướng dẫn</label>
               <input id="wf-essay-lecturer" class="wf-input" type="text" placeholder="Giảng viên hướng dẫn...">
-              <label for="wf-essay-date" class="field-label">Ngày</label>
-              <input id="wf-essay-date" class="wf-input" type="text" placeholder="Đà Nẵng, ngày ... tháng ... năm ...">
+              <div id="wf-essay-group-wrap" class="wf-group-wrap">
+                <label for="wf-essay-group" class="field-label">Tên / Số nhóm</label>
+                <input id="wf-essay-group" class="wf-input" type="text" placeholder="Ví dụ: Nhóm 03 (để trống nếu làm cá nhân)...">
+              </div>
+              <label id="wf-essay-student-label" for="wf-essay-student" class="field-label">Thành viên (Họ tên | MSSV | Nhiệm vụ | %)</label>
+              <textarea id="wf-essay-student" class="wf-input" rows="3" placeholder="Nguyễn Văn A | 123456789 | Chương 1 | 100%&#10;Trần Thị B | 987654321 | Chương 2 | 100%"></textarea>
             </div>
+
+            <details class="wf-advanced-details">
+              <summary>⚙️ Thông tin bìa &amp; Hồ sơ SV (tự lưu)</summary>
+              <div id="wf-essay-cover-fields" class="wf-essay-cover-fields">
+                <label for="wf-essay-faculty" class="field-label">Khoa / Viện</label>
+                <input id="wf-essay-faculty" class="wf-input" type="text" placeholder="Khoa / Viện đào tạo...">
+                <label for="wf-essay-class" class="field-label">Lớp</label>
+                <input id="wf-essay-class" class="wf-input" type="text" placeholder="Tên lớp...">
+                <label for="wf-essay-type" class="field-label">Loại tiểu luận</label>
+                <input id="wf-essay-type" class="wf-input" type="text" value="Tiểu luận môn học">
+                <label for="wf-essay-date" class="field-label">Ngày (tự điền hôm nay)</label>
+                <input id="wf-essay-date" class="wf-input" type="text" placeholder="Đà Nẵng, ngày ... tháng ... năm ...">
+              </div>
+            </details>
 
             <div id="wf-essay-file-dropzone" class="wf-essay-file-dropzone">
               <input type="file" id="wf-essay-file-input" accept=".docx,.txt" hidden>
@@ -382,54 +396,60 @@
                 </select>
               </label>
               <label class="wf-cmu-field">
-                <span class="field-label">Phiên bản</span>
-                <input id="wf-cmu-version" class="wf-input" type="text" value="Version 1.0">
-              </label>
-              <label class="wf-cmu-field">
-                <span class="field-label">Ngày nộp</span>
-                <input id="wf-cmu-date" class="wf-input" type="text" placeholder="Nov 12th, 2026">
+                <span class="field-label">Mentor</span>
+                <input id="wf-cmu-mentor" class="wf-input" type="text" placeholder="Sanh, Tran Kim">
               </label>
               <label class="wf-cmu-field wf-cmu-field-wide">
                 <span class="field-label">Tên đề tài báo cáo</span>
                 <input id="wf-cmu-title" class="wf-input" type="text" placeholder="Project report title">
               </label>
-              <label class="wf-cmu-field">
-                <span class="field-label">Tên viết tắt dự án</span>
-                <input id="wf-cmu-acronym" class="wf-input" type="text" placeholder="CTBC">
-              </label>
-              <label class="wf-cmu-field">
-                <span class="field-label">Start Date</span>
-                <input id="wf-cmu-start-date" class="wf-input" type="text" placeholder="Project start date">
-              </label>
-              <label class="wf-cmu-field">
-                <span class="field-label">End Date</span>
-                <input id="wf-cmu-end-date" class="wf-input" type="text" placeholder="Project end date">
-              </label>
-              <label class="wf-cmu-field">
-                <span class="field-label">Created by</span>
-                <input id="wf-cmu-created-by" class="wf-input" type="text" placeholder="Doan Van Thien Hoang">
-              </label>
-              <label class="wf-cmu-field">
-                <span class="field-label">Full Name</span>
-                <input id="wf-cmu-fullname" class="wf-input" type="text" placeholder="Doan Van Thien Hoang">
-              </label>
-              <label class="wf-cmu-field">
-                <span class="field-label">Student ID</span>
-                <input id="wf-cmu-student-id" class="wf-input" type="text" placeholder="30211356528">
-              </label>
-              <label class="wf-cmu-field wf-cmu-field-wide">
-                <span class="field-label">Email &amp; SĐT liên hệ</span>
-                <input id="wf-cmu-contact" class="wf-input" type="text" placeholder="Email: ... | Tel: ...">
-              </label>
-              <label class="wf-cmu-field">
-                <span class="field-label">Mentor</span>
-                <input id="wf-cmu-mentor" class="wf-input" type="text" placeholder="Sanh, Tran Kim">
-              </label>
-              <label class="wf-cmu-field wf-cmu-field-wide">
-                <span class="field-label">Demo Link / GitHub URL (tùy chọn)</span>
-                <input id="wf-cmu-demo-link" class="wf-input" type="url" placeholder="https://github.com/...">
-              </label>
             </div>
+
+            <details class="wf-advanced-details">
+              <summary>⚙️ Hồ sơ SV &amp; Tùy chọn nâng cao (tự điền &amp; lưu)</summary>
+              <div class="wf-cmu-fields wf-advanced-grid">
+                <label class="wf-cmu-field">
+                  <span class="field-label">Full Name</span>
+                  <input id="wf-cmu-fullname" class="wf-input" type="text" placeholder="Họ tên sinh viên">
+                </label>
+                <label class="wf-cmu-field">
+                  <span class="field-label">Student ID</span>
+                  <input id="wf-cmu-student-id" class="wf-input" type="text" placeholder="MSSV">
+                </label>
+                <label class="wf-cmu-field wf-cmu-field-wide">
+                  <span class="field-label">Email &amp; SĐT liên hệ</span>
+                  <input id="wf-cmu-contact" class="wf-input" type="text" placeholder="Email: ... | Tel: ...">
+                </label>
+                <label class="wf-cmu-field">
+                  <span class="field-label">Tên viết tắt (tự tạo)</span>
+                  <input id="wf-cmu-acronym" class="wf-input" type="text" placeholder="Tự lấy từ đề tài">
+                </label>
+                <label class="wf-cmu-field">
+                  <span class="field-label">Phiên bản</span>
+                  <input id="wf-cmu-version" class="wf-input" type="text" value="Version 1.0">
+                </label>
+                <label class="wf-cmu-field">
+                  <span class="field-label">Ngày nộp (tự điền)</span>
+                  <input id="wf-cmu-date" class="wf-input" type="text" placeholder="Tự điền hôm nay">
+                </label>
+                <label class="wf-cmu-field">
+                  <span class="field-label">Created by (tự đồng bộ)</span>
+                  <input id="wf-cmu-created-by" class="wf-input" type="text" placeholder="Đồng bộ từ Full Name">
+                </label>
+                <label class="wf-cmu-field">
+                  <span class="field-label">Start Date</span>
+                  <input id="wf-cmu-start-date" class="wf-input" type="text" placeholder="Project start date">
+                </label>
+                <label class="wf-cmu-field">
+                  <span class="field-label">End Date</span>
+                  <input id="wf-cmu-end-date" class="wf-input" type="text" placeholder="Project end date">
+                </label>
+                <label class="wf-cmu-field wf-cmu-field-wide">
+                  <span class="field-label">Demo Link / GitHub URL (tùy chọn)</span>
+                  <input id="wf-cmu-demo-link" class="wf-input" type="url" placeholder="https://github.com/...">
+                </label>
+              </div>
+            </details>
 
             <div id="wf-cmu-file-dropzone" class="wf-cmu-file-dropzone">
               <input type="file" id="wf-cmu-file-input" accept=".docx,.txt" hidden>
@@ -458,11 +478,31 @@
     </section>
 
     <section id="view-history" class="app-view" aria-labelledby="current-view-title" hidden>
-      <div class="card">
-        <h2>Lịch sử Bộ đề</h2>
-        <p>Chọn một bộ đề đã lưu để xem lại câu hỏi và phần tóm tắt.</p>
-        <label for="study-history-select" class="field-label">Bộ đề đã tạo</label>
-        <div class="history-select-row">
+      <div class="card history-card-shell">
+        <div class="history-header-row">
+          <div>
+            <h2>Lịch sử Bộ đề</h2>
+            <p>Chọn nhanh bộ đề hoặc bản tóm tắt đã lưu để ôn tập lại.</p>
+          </div>
+          <span id="history-total-badge" class="history-total-badge">0 mục</span>
+        </div>
+
+        <div class="history-search-wrap">
+          <svg class="ui-icon history-search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input id="history-search-input" class="wf-input history-search-input" type="search" placeholder="Tìm theo tiêu đề bộ đề, video..." aria-label="Tìm kiếm lịch sử bộ đề">
+        </div>
+
+        <div id="history-filter-pills" class="history-filter-pills" role="tablist" aria-label="Lọc lịch sử theo loại">
+          <button type="button" class="history-filter-pill active" data-history-filter="all" role="tab" aria-selected="true">Tất cả</button>
+          <button type="button" class="history-filter-pill" data-history-filter="youtube" role="tab" aria-selected="false">YouTube</button>
+          <button type="button" class="history-filter-pill" data-history-filter="quiz" role="tab" aria-selected="false">Quiz</button>
+          <button type="button" class="history-filter-pill" data-history-filter="web" role="tab" aria-selected="false">Web</button>
+        </div>
+
+        <div id="history-cards-list" class="history-cards-list" role="list" aria-live="polite"></div>
+
+        <!-- Giữ đồng bộ ngầm với bộ chọn cũ để đảm bảo tương thích ngược 100% -->
+        <div class="history-select-row" hidden>
           <select id="study-history-select" class="history-select" aria-label="Lịch sử bộ đề đã tạo">
             <option value="">-- Chọn bộ đề cũ để ôn lại --</option>
           </select>
@@ -485,7 +525,7 @@
         </div>
       </div>
       <div class="card settings-theme-card">
-        <h2>Giao diện &amp; Chủ đề (6 Themes)</h2>
+        <h2>Giao diện &amp; Chủ đề</h2>
         <p>Chọn tông màu công nghệ hoặc sáng học thuật độ tương phản cao — đồng bộ tự động giữa Side Panel và Phòng luyện tập.</p>
         <div class="view-controls">
           <label for="theme-selector" class="field-label">Chủ đề hiển thị</label>

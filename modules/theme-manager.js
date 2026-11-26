@@ -2,31 +2,29 @@ export const THEME_STORAGE_KEY = 'smartStudyTheme';
 export const DEFAULT_THEME_ID = 'tech-ocean';
 
 export const SMART_STUDY_THEMES = [
-  { id: 'tech-ocean', label: '🌊 Tech Ocean (Mặc định)' },
-  { id: 'automation-slate', label: '🤖 Automation Slate' },
-  { id: 'cyber-cobalt', label: '⚡ Cyber Cobalt' },
-  { id: 'clean-daylight', label: '☀️ Clean Daylight' },
-  { id: 'academic-ivory', label: '📜 Academic Ivory' },
-  { id: 'neural-violet', label: '🧠 Neural Violet' }
+  // Nhóm Tối (Dark — 8 chủ đề)
+  { id: 'tech-ocean', label: 'Tech Ocean (Mặc định)', group: 'dark' },
+  { id: 'tech-midnight', label: 'Tech Midnight', group: 'dark' },
+  { id: 'cyber-cobalt', label: 'Cyber Cobalt', group: 'dark' },
+  { id: 'automation-slate', label: 'Automation Slate', group: 'dark' },
+  { id: 'neural-violet', label: 'Neural Violet', group: 'dark' },
+  { id: 'emerald-matrix', label: 'Emerald Matrix', group: 'dark' },
+  { id: 'obsidian-amber', label: 'Obsidian Amber', group: 'dark' },
+  { id: 'crimson-carbon', label: 'Crimson Carbon', group: 'dark' },
+  // Nhóm Sáng (Light — 7 chủ đề)
+  { id: 'clean-daylight', label: 'Clean Daylight', group: 'light' },
+  { id: 'nordic-sky', label: 'Nordic Sky', group: 'light' },
+  { id: 'academic-ivory', label: 'Academic Ivory', group: 'light' },
+  { id: 'mint-focus', label: 'Mint Focus', group: 'light' },
+  { id: 'sunrise-peach', label: 'Sunrise Peach', group: 'light' },
+  { id: 'lavender-mist', label: 'Lavender Mist', group: 'light' },
+  { id: 'rose-quartz', label: 'Rose Quartz', group: 'light' }
 ];
-
-const LEGACY_THEME_MAP = {
-  'tech-midnight': 'tech-ocean',
-  'emerald-matrix': 'automation-slate',
-  'obsidian-amber': 'automation-slate',
-  'crimson-carbon': 'neural-violet',
-  'nordic-sky': 'clean-daylight',
-  'mint-focus': 'clean-daylight',
-  'sunrise-peach': 'academic-ivory',
-  'lavender-mist': 'academic-ivory',
-  'rose-quartz': 'clean-daylight'
-};
 
 const VALID_THEME_IDS = new Set(SMART_STUDY_THEMES.map((t) => t.id));
 
 export function normalizeThemeId(themeId) {
   if (VALID_THEME_IDS.has(themeId)) return themeId;
-  if (themeId && LEGACY_THEME_MAP[themeId]) return LEGACY_THEME_MAP[themeId];
   return DEFAULT_THEME_ID;
 }
 
@@ -55,12 +53,22 @@ export async function initThemeManager(selectIds = ['theme-selector', 'practice-
 
   selects.forEach((selectEl) => {
     selectEl.replaceChildren();
+    const darkGroup = document.createElement('optgroup');
+    darkGroup.label = 'Chế độ Tối (Dark — 8 chủ đề)';
+    const lightGroup = document.createElement('optgroup');
+    lightGroup.label = 'Chế độ Sáng (Light — 7 chủ đề)';
+
     SMART_STUDY_THEMES.forEach((theme) => {
       const opt = document.createElement('option');
       opt.value = theme.id;
       opt.textContent = theme.label;
-      selectEl.appendChild(opt);
+      if (theme.group === 'light') {
+        lightGroup.appendChild(opt);
+      } else {
+        darkGroup.appendChild(opt);
+      }
     });
+    selectEl.append(darkGroup, lightGroup);
     selectEl.value = savedTheme;
 
     selectEl.addEventListener('change', async () => {

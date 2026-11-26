@@ -28,29 +28,28 @@ async function fetchBackendWithTimeout(pathOrUrl, options = {}, timeoutMs = BACK
 const THEME_STORAGE_KEY = 'smartStudyTheme';
 const DEFAULT_THEME_ID = 'tech-ocean';
 const SIDEBAR_THEMES = [
-  { id: 'tech-ocean', label: '🌊 Tech Ocean (Mặc định)' },
-  { id: 'automation-slate', label: '🤖 Automation Slate' },
-  { id: 'cyber-cobalt', label: '⚡ Cyber Cobalt' },
-  { id: 'clean-daylight', label: '☀️ Clean Daylight' },
-  { id: 'academic-ivory', label: '📜 Academic Ivory' },
-  { id: 'neural-violet', label: '🧠 Neural Violet' }
+  // Nhóm Tối (Dark — 8 chủ đề)
+  { id: 'tech-ocean', label: 'Tech Ocean (Mặc định)', group: 'dark' },
+  { id: 'tech-midnight', label: 'Tech Midnight', group: 'dark' },
+  { id: 'cyber-cobalt', label: 'Cyber Cobalt', group: 'dark' },
+  { id: 'automation-slate', label: 'Automation Slate', group: 'dark' },
+  { id: 'neural-violet', label: 'Neural Violet', group: 'dark' },
+  { id: 'emerald-matrix', label: 'Emerald Matrix', group: 'dark' },
+  { id: 'obsidian-amber', label: 'Obsidian Amber', group: 'dark' },
+  { id: 'crimson-carbon', label: 'Crimson Carbon', group: 'dark' },
+  // Nhóm Sáng (Light — 7 chủ đề)
+  { id: 'clean-daylight', label: 'Clean Daylight', group: 'light' },
+  { id: 'nordic-sky', label: 'Nordic Sky', group: 'light' },
+  { id: 'academic-ivory', label: 'Academic Ivory', group: 'light' },
+  { id: 'mint-focus', label: 'Mint Focus', group: 'light' },
+  { id: 'sunrise-peach', label: 'Sunrise Peach', group: 'light' },
+  { id: 'lavender-mist', label: 'Lavender Mist', group: 'light' },
+  { id: 'rose-quartz', label: 'Rose Quartz', group: 'light' }
 ];
-const SIDEBAR_LEGACY_THEME_MAP = {
-  'tech-midnight': 'tech-ocean',
-  'emerald-matrix': 'automation-slate',
-  'obsidian-amber': 'automation-slate',
-  'crimson-carbon': 'neural-violet',
-  'nordic-sky': 'clean-daylight',
-  'mint-focus': 'clean-daylight',
-  'sunrise-peach': 'academic-ivory',
-  'lavender-mist': 'academic-ivory',
-  'rose-quartz': 'clean-daylight'
-};
 
 function applySidebarTheme(themeId) {
-  const mapped = SIDEBAR_LEGACY_THEME_MAP[themeId] || themeId;
-  const valid = SIDEBAR_THEMES.some((t) => t.id === mapped);
-  const safeId = valid ? mapped : DEFAULT_THEME_ID;
+  const valid = SIDEBAR_THEMES.some((t) => t.id === themeId);
+  const safeId = valid ? themeId : DEFAULT_THEME_ID;
   document.documentElement.setAttribute('data-theme', safeId);
   return safeId;
 }
@@ -71,12 +70,22 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   if (selectEl) {
     selectEl.replaceChildren();
+    const darkGroup = document.createElement('optgroup');
+    darkGroup.label = 'Chế độ Tối (Dark — 8 chủ đề)';
+    const lightGroup = document.createElement('optgroup');
+    lightGroup.label = 'Chế độ Sáng (Light — 7 chủ đề)';
+
     SIDEBAR_THEMES.forEach((theme) => {
       const opt = document.createElement('option');
       opt.value = theme.id;
       opt.textContent = theme.label;
-      selectEl.appendChild(opt);
+      if (theme.group === 'light') {
+        lightGroup.appendChild(opt);
+      } else {
+        darkGroup.appendChild(opt);
+      }
     });
+    selectEl.append(darkGroup, lightGroup);
     selectEl.value = savedTheme;
     selectEl.addEventListener('change', async () => {
       const next = applySidebarTheme(selectEl.value);
@@ -3639,10 +3648,239 @@ async function refreshStudyHistoryDropdown(selectedId = '') {
     if (selectedId) {
       historySelect.value = selectedId;
     }
+
+    if (typeof renderInteractiveHistoryCards === 'function') {
+      renderInteractiveHistoryCards(studyHistory, selectedId || historySelect.value || '');
+    }
   } catch (error) {
     console.error('Lỗi khi tải danh sách lịch sử học tập:', error);
   }
 }
+
+let activeHistoryFilter = 'all';
+let activeHistorySearchQuery = '';
+let cachedStudyHistoryList = [];
+let activeHistorySelectedId = '';
+
+function getHistoryEntryCategory(entry) {
+  if (entry?.type === 'youtube_summary') return 'youtube';
+  if (entry?.type === 'web_summary') return 'web';
+  return 'quiz';
+}
+
+function createHistorySvgIcon(paths, className = 'ui-icon') {
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(svgNS, 'svg');
+  svg.setAttribute('class', className);
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('aria-hidden', 'true');
+  paths.forEach((d) => {
+    const path = document.createElementNS(svgNS, 'path');
+    path.setAttribute('d', d);
+    svg.appendChild(path);
+  });
+  return svg;
+}
+
+function renderInteractiveHistoryCards(studyHistory = cachedStudyHistoryList, selectedId = activeHistorySelectedId) {
+  const listEl = document.getElementById('history-cards-list');
+  if (!listEl) return;
+
+  cachedStudyHistoryList = Array.isArray(studyHistory) ? studyHistory : [];
+  if (selectedId !== undefined) {
+    activeHistorySelectedId = selectedId;
+  }
+
+  const totalBadge = document.getElementById('history-total-badge');
+  if (totalBadge) {
+    totalBadge.textContent = `${cachedStudyHistoryList.length} mục`;
+  }
+
+  // Cập nhật số lượng trên từng pill bộ lọc
+  const counts = { all: cachedStudyHistoryList.length, youtube: 0, quiz: 0, web: 0 };
+  cachedStudyHistoryList.forEach((item) => {
+    const cat = getHistoryEntryCategory(item);
+    counts[cat] = (counts[cat] || 0) + 1;
+  });
+  const filterLabels = { all: 'Tất cả', youtube: 'YouTube', quiz: 'Quiz', web: 'Web' };
+  document.querySelectorAll('.history-filter-pill[data-history-filter]').forEach((pill) => {
+    const key = pill.dataset.historyFilter || 'all';
+    const isActive = key === activeHistoryFilter;
+    pill.classList.toggle('active', isActive);
+    pill.setAttribute('aria-selected', isActive ? 'true' : 'false');
+    pill.textContent = counts[key] > 0 && key !== 'all' ? `${filterLabels[key]} (${counts[key]})` : filterLabels[key];
+  });
+
+  const query = activeHistorySearchQuery.trim().toLowerCase();
+  const filtered = cachedStudyHistoryList.filter((entry) => {
+    if (activeHistoryFilter !== 'all' && getHistoryEntryCategory(entry) !== activeHistoryFilter) {
+      return false;
+    }
+    if (query) {
+      const hay = `${entry.title || ''} ${entry.createdAt || ''}`.toLowerCase();
+      if (!hay.includes(query)) return false;
+    }
+    return true;
+  });
+
+  listEl.replaceChildren();
+
+  if (filtered.length === 0) {
+    const emptyBox = document.createElement('div');
+    emptyBox.className = 'history-empty-state';
+    emptyBox.appendChild(
+      createHistorySvgIcon([
+        'M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8',
+        'M3 3v5h5',
+        'M12 7v5l4 2'
+      ])
+    );
+    const msg = document.createElement('p');
+    msg.textContent = cachedStudyHistoryList.length === 0
+      ? 'Chưa có bộ đề hay bản tóm tắt nào được lưu.'
+      : 'Không tìm thấy mục nào khớp với bộ lọc hiện tại.';
+    emptyBox.appendChild(msg);
+    listEl.appendChild(emptyBox);
+    return;
+  }
+
+  const historySelect = document.getElementById('study-history-select');
+
+  filtered.forEach((entry, idx) => {
+    const category = getHistoryEntryCategory(entry);
+    const isVocab = category === 'quiz' && entry.quiz_type === 'vocab';
+    const qCount = Array.isArray(entry.quiz) ? entry.quiz.length : 0;
+    const kwCount = Array.isArray(entry.keywords) ? entry.keywords.length : 0;
+
+    const card = document.createElement('div');
+    card.className = 'history-item-card';
+    if (entry.id && entry.id === activeHistorySelectedId) {
+      card.classList.add('is-active');
+    }
+    card.setAttribute('role', 'listitem');
+    card.style.setProperty('--stagger-idx', String(Math.min(idx, 8)));
+
+    const mainBtn = document.createElement('button');
+    mainBtn.type = 'button';
+    mainBtn.className = 'history-item-main';
+
+    const topRow = document.createElement('div');
+    topRow.className = 'history-item-top';
+
+    const badge = document.createElement('span');
+    badge.className = `history-type-badge is-${isVocab ? 'vocab' : category}`;
+    const badgeIconPaths =
+      category === 'youtube'
+        ? ['M5 3l14 9-14 9V3z']
+        : category === 'web'
+          ? ['M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z', 'M2 12h20']
+          : isVocab
+            ? ['M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z', 'M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z']
+            : ['M9 11l3 3L22 4', 'M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11'];
+    const badgeText = document.createElement('span');
+    badgeText.textContent =
+      category === 'youtube' ? 'YouTube' : category === 'web' ? 'Web' : isVocab ? 'Từ vựng' : 'Quiz';
+    badge.append(createHistorySvgIcon(badgeIconPaths, 'history-badge-icon'), badgeText);
+
+    const timeSpan = document.createElement('span');
+    timeSpan.className = 'history-item-time';
+    timeSpan.textContent = String(entry.createdAt || '').trim();
+
+    topRow.append(badge, timeSpan);
+
+    const titleEl = document.createElement('div');
+    titleEl.className = 'history-item-title';
+    titleEl.textContent = String(entry.title || 'Bộ đề ôn tập').trim();
+
+    const metaRow = document.createElement('div');
+    metaRow.className = 'history-item-meta';
+    const metaText = document.createElement('span');
+    metaText.textContent =
+      category === 'youtube'
+        ? kwCount > 0 ? `Tóm tắt video • ${kwCount} từ khóa` : 'Tóm tắt video YouTube'
+        : category === 'web'
+          ? kwCount > 0 ? `Tóm tắt trang web • ${kwCount} từ khóa` : 'Tóm tắt trang web'
+          : isVocab
+            ? `${qCount} thẻ từ vựng`
+            : `${qCount} câu trắc nghiệm`;
+    const arrowIcon = createHistorySvgIcon(['M5 12h14', 'm12 5 7 7-7 7'], 'history-item-arrow');
+    metaRow.append(metaText, arrowIcon);
+
+    mainBtn.append(topRow, titleEl, metaRow);
+    mainBtn.addEventListener('click', () => {
+      activeHistorySelectedId = entry.id;
+      if (historySelect) {
+        historySelect.value = entry.id;
+        historySelect.dispatchEvent(new Event('change'));
+      }
+      listEl.querySelectorAll('.history-item-card.is-active').forEach((c) => c.classList.remove('is-active'));
+      card.classList.add('is-active');
+    });
+
+    // Nút xóa 2 nhịp thông minh (Two-step Inline Confirm + Smart Collapse)
+    const delBtn = document.createElement('button');
+    delBtn.type = 'button';
+    delBtn.className = 'history-item-delete-btn';
+    delBtn.title = 'Xóa mục này';
+    delBtn.setAttribute('aria-label', `Xóa ${entry.title || 'mục này'}`);
+    const trashIcon = createHistorySvgIcon(
+      ['M3 6h18', 'M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6', 'M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2'],
+      'history-delete-icon'
+    );
+    delBtn.appendChild(trashIcon);
+
+    let confirmTimer = null;
+    delBtn.addEventListener('click', async (event) => {
+      event.stopPropagation();
+      if (!delBtn.classList.contains('is-confirming')) {
+        delBtn.classList.add('is-confirming');
+        delBtn.textContent = 'Xóa?';
+        confirmTimer = setTimeout(() => {
+          delBtn.classList.remove('is-confirming');
+          delBtn.replaceChildren(trashIcon.cloneNode(true));
+        }, 3000);
+        return;
+      }
+
+      if (confirmTimer) clearTimeout(confirmTimer);
+      delBtn.disabled = true;
+      card.classList.add('is-removing');
+
+      try {
+        await new Promise((resolve) => setTimeout(resolve, 210));
+        const { studyHistory: latest = [] } = await chrome.storage.local.get('studyHistory');
+        const updated = latest.filter((item) => item.id !== entry.id);
+        await chrome.storage.local.set({ studyHistory: updated });
+        if (activeHistorySelectedId === entry.id) activeHistorySelectedId = '';
+        await refreshStudyHistoryDropdown(activeHistorySelectedId);
+        setMascotStatus('Đã xóa mục khỏi lịch sử học tập.', 'idle');
+      } catch (err) {
+        card.classList.remove('is-removing');
+        delBtn.disabled = false;
+        setMascotStatus(`Không thể xóa mục lịch sử: ${err.message}`, 'error');
+      }
+    });
+
+    card.append(mainBtn, delBtn);
+    listEl.appendChild(card);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const searchInput = document.getElementById('history-search-input');
+  if (searchInput) {
+    searchInput.addEventListener('input', () => {
+      activeHistorySearchQuery = searchInput.value || '';
+      renderInteractiveHistoryCards();
+    });
+  }
+  document.querySelectorAll('.history-filter-pill[data-history-filter]').forEach((pill) => {
+    pill.addEventListener('click', () => {
+      activeHistoryFilter = pill.dataset.historyFilter || 'all';
+      renderInteractiveHistoryCards();
+    });
+  });
+});
 
 async function saveQuizToHistory(sourceTitle, quizData, summaryText = '') {
   try {
@@ -4709,6 +4947,561 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 let ytLastWorkingModel = '';
+const ytTranscriptSessionCache = new Map();
+const MAX_YT_TRANSCRIPT_CACHE = 5;
+
+function setYoutubeTranscriptCache(videoId, payload) {
+  if (!videoId || !payload?.transcript) return;
+  if (ytTranscriptSessionCache.has(videoId)) {
+    ytTranscriptSessionCache.delete(videoId);
+  }
+  ytTranscriptSessionCache.set(videoId, { ...payload, cachedAt: Date.now() });
+  while (ytTranscriptSessionCache.size > MAX_YT_TRANSCRIPT_CACHE) {
+    const oldestKey = ytTranscriptSessionCache.keys().next().value;
+    ytTranscriptSessionCache.delete(oldestKey);
+  }
+}
+
+function formatYoutubeSeconds(totalSec, forceHours = false) {
+  const sec = Math.max(0, Math.floor(Number(totalSec) || 0));
+  const hours = Math.floor(sec / 3600);
+  const minutes = Math.floor((sec % 3600) / 60);
+  const seconds = sec % 60;
+  if (hours > 0 || forceHours) {
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  }
+  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+}
+
+/**
+ * Trích xuất danh sách Chapter (Phân cảnh) từ mô tả video YouTube (ví dụ "00:00 Giới thiệu", "1:05:20 Phần 2")
+ */
+function parseYoutubeChaptersFromDescription(description, totalDurationSec = 0) {
+  const text = String(description || '');
+  if (!text) return [];
+  const chapters = [];
+  const lineRegex = /(?:^|\n)\s*(?:\[)?(\d{1,3}:\d{2}(?::\d{2})?)(?:\])?\s*(?:[-–—|:]\s*)?([^\n]{2,120})/g;
+  let match;
+  while ((match = lineRegex.exec(text)) !== null) {
+    const sec = parseYoutubeTimestamp(match[1]);
+    if (sec === null) continue;
+    if (totalDurationSec > 0 && sec >= totalDurationSec) continue;
+    const title = String(match[2] || '').replace(/\s+/g, ' ').trim();
+    if (!title) continue;
+    chapters.push({ startSec: sec, title });
+  }
+  return chapters;
+}
+
+/**
+ * Chuẩn hóa Chapter gốc thành các khung [startSec, endSec] nối tiếp nhau phủ kín tới totalDurationSec
+ */
+function normalizeYoutubeChapterSlots(rawChapters, totalDurationSec, useHoursFormat) {
+  if (!Array.isArray(rawChapters) || rawChapters.length < 2 || totalDurationSec <= 0) {
+    return [];
+  }
+  const seenSec = new Set();
+  const sorted = rawChapters
+    .map((c) => ({
+      startSec: Math.max(0, Math.floor(Number(c?.startSec) || 0)),
+      title: String(c?.title || '').replace(/\s+/g, ' ').trim()
+    }))
+    .filter((c) => c.startSec < totalDurationSec && !seenSec.has(c.startSec) && (seenSec.add(c.startSec), true))
+    .sort((a, b) => a.startSec - b.startSec);
+
+  if (sorted.length < 2) return [];
+
+  // Nếu chapter đầu tiên không bắt đầu từ 00:00 (ví dụ bắt đầu ở 00:45), thêm khung mở đầu
+  if (sorted[0].startSec >= 30) {
+    sorted.unshift({ startSec: 0, title: 'Mở đầu' });
+  }
+
+  return sorted.map((ch, idx) => {
+    const startSec = ch.startSec;
+    const endSec = idx + 1 < sorted.length ? sorted[idx + 1].startSec : totalDurationSec;
+    return {
+      startSec,
+      endSec: Math.max(startSec, endSec),
+      startLabel: formatYoutubeSeconds(startSec, useHoursFormat),
+      endLabel: formatYoutubeSeconds(Math.max(startSec, endSec), useHoursFormat),
+      title: ch.title,
+      isChapter: true
+    };
+  });
+}
+
+const YT_SUMMARY_MODE_STORAGE_KEY = 'smartStudyYtSummaryLevel';
+const MAX_YOUTUBE_VOCAB_ITEMS = 45;
+const MAX_YOUTUBE_API_CHUNKS = 24;
+
+const BASIC_ENGLISH_STOPWORDS = new Set([
+  'a', 'an', 'the', 'and', 'or', 'but', 'if', 'so', 'as', 'at', 'by', 'for', 'from', 'in', 'into',
+  'of', 'on', 'onto', 'out', 'over', 'to', 'up', 'with', 'about', 'after', 'before', 'between',
+  'is', 'am', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did',
+  'will', 'would', 'shall', 'should', 'can', 'could', 'may', 'might', 'must',
+  'i', 'you', 'he', 'she', 'it', 'we', 'they', 'me', 'him', 'her', 'us', 'them',
+  'my', 'your', 'his', 'its', 'our', 'their', 'this', 'that', 'these', 'those',
+  'what', 'which', 'who', 'whom', 'whose', 'where', 'when', 'why', 'how',
+  'not', 'no', 'yes', 'very', 'just', 'also', 'too', 'only', 'then', 'than', 'here', 'there', 'now',
+  'all', 'any', 'some', 'more', 'most', 'other', 'such', 'each', 'every', 'both', 'one', 'two',
+  'like', 'going', 'get', 'got', 'make', 'made', 'know', 'think', 'see', 'let', 'okay', 'well', 'right'
+]);
+
+function normalizeYoutubeSummaryMode(rawMode, fallbackMode = 'simple') {
+  const clean = String(rawMode || '').trim().toLowerCase();
+  if (clean === 'short') return 'medium';
+  if (clean === 'simple' || clean === 'easy') return 'simple';
+  if (clean === 'medium' || clean === 'balanced') return 'medium';
+  if (clean === 'detailed' || clean === 'deep') return 'detailed';
+  return ['simple', 'medium', 'detailed'].includes(fallbackMode) ? fallbackMode : 'simple';
+}
+
+function loadStoredYoutubeSummaryMode() {
+  try {
+    const raw =
+      window.localStorage?.getItem(YT_SUMMARY_MODE_STORAGE_KEY) ||
+      window.localStorage?.getItem('ytSummaryLevel') ||
+      '';
+    if (!raw) return 'simple';
+    const normalized = normalizeYoutubeSummaryMode(raw, 'simple');
+    if (raw.trim().toLowerCase() === 'short') {
+      window.localStorage?.setItem(YT_SUMMARY_MODE_STORAGE_KEY, normalized);
+    }
+    return normalized;
+  } catch (_) {
+    return 'simple';
+  }
+}
+
+function saveYoutubeSummaryModePreference(modeValue) {
+  const normalized = normalizeYoutubeSummaryMode(modeValue, 'simple');
+  try {
+    window.localStorage?.setItem(YT_SUMMARY_MODE_STORAGE_KEY, normalized);
+  } catch (_) {}
+  return normalized;
+}
+
+/**
+ * Tạo khung thời gian đều nhau khi video không có Chapter gốc (hỗ trợ từ vài giây đến 12+ giờ):
+ * - Video < 60 giây: 1 khung toàn bộ [00:00 - end]
+ * - Video 1–25 phút (ví dụ 19:42): mỗi khung 3 phút
+ * - Video 25–60 phút: mỗi khung 5 phút
+ * - Video 1–3 giờ: mỗi khung 15 phút (Chuyên sâu) / 20 phút (Dễ hiểu & Trung bình)
+ * - Video 3–6 giờ: mỗi khung 30 phút (Chuyên sâu) / 45 phút (Dễ hiểu & Trung bình)
+ * - Video > 6 giờ (6–12+ giờ): mỗi khung 45 phút (Chuyên sâu) / 60 phút (Dễ hiểu & Trung bình)
+ */
+function buildUniformTimeSlots(totalDurationSec, summaryLevel, useHoursFormat) {
+  const safeTotal = Math.max(1, Math.floor(Number(totalDurationSec) || 0));
+  const mode = normalizeYoutubeSummaryMode(summaryLevel, 'simple');
+
+  if (safeTotal < 60) {
+    return [{
+      startSec: 0,
+      endSec: safeTotal,
+      startLabel: formatYoutubeSeconds(0, useHoursFormat),
+      endLabel: formatYoutubeSeconds(safeTotal, useHoursFormat),
+      title: '',
+      isChapter: false
+    }];
+  }
+
+  let slotSec = 3 * 60;
+  if (safeTotal > 6 * 3600) {
+    slotSec = mode === 'detailed' ? 45 * 60 : 60 * 60;
+  } else if (safeTotal >= 3 * 3600) {
+    slotSec = mode === 'detailed' ? 30 * 60 : 45 * 60;
+  } else if (safeTotal >= 3600) {
+    slotSec = mode === 'detailed' ? 15 * 60 : 20 * 60;
+  } else if (safeTotal > 25 * 60) {
+    slotSec = 5 * 60;
+  }
+
+  const slots = [];
+  let cursor = 0;
+  while (cursor < safeTotal) {
+    let nextEnd = Math.min(safeTotal, cursor + slotSec);
+    // Gộp đoạn đuôi quá ngắn (< 40% slotSec hoặc < 90s) vào khung cuối để không tạo khung lẻ vụn
+    const remaining = safeTotal - nextEnd;
+    if (remaining > 0 && remaining < Math.max(90, slotSec * 0.4)) {
+      nextEnd = safeTotal;
+    }
+    slots.push({
+      startSec: cursor,
+      endSec: nextEnd,
+      startLabel: formatYoutubeSeconds(cursor, useHoursFormat),
+      endLabel: formatYoutubeSeconds(nextEnd, useHoursFormat),
+      title: '',
+      isChapter: false
+    });
+    if (nextEnd >= safeTotal) break;
+    cursor = nextEnd;
+  }
+  return slots;
+}
+
+/**
+ * Gom các dòng phụ đề rời rạc mỗi 2-3 giây thành khối ~15 giây để giữ nguyên 100% lời thoại
+ * và mốc thời gian thực mà không lãng phí token cho timestamp lặp lại quá dày.
+ */
+function compactYoutubeTranscriptLines(rawLines, groupIntervalSec = 15, forceHours = false) {
+  const compacted = [];
+  let currentBlock = null;
+
+  for (const item of rawLines) {
+    const cleanText = String(item.text || '').replace(/\s+/g, ' ').trim();
+    if (!cleanText) continue;
+
+    if (
+      !currentBlock ||
+      item.seconds - currentBlock.startSec >= groupIntervalSec ||
+      currentBlock.text.length + cleanText.length > 420
+    ) {
+      if (currentBlock) {
+        compacted.push(`[${formatYoutubeSeconds(currentBlock.startSec, forceHours)}] ${currentBlock.text}`);
+      }
+      currentBlock = {
+        startSec: item.seconds,
+        text: cleanText
+      };
+    } else {
+      currentBlock.text = `${currentBlock.text} ${cleanText}`;
+    }
+  }
+
+  if (currentBlock) {
+    compacted.push(`[${formatYoutubeSeconds(currentBlock.startSec, forceHours)}] ${currentBlock.text}`);
+  }
+  return compacted.join('\n');
+}
+
+/**
+ * Phân tích phụ đề có mốc thời gian thành danh sách dòng kèm giây thực tế
+ */
+function parseYoutubeTranscriptLines(transcript) {
+  const lines = String(transcript || '').split(/\r?\n/);
+  const parsed = [];
+  let lastSeconds = 0;
+
+  for (const rawLine of lines) {
+    const trimmed = rawLine.trim();
+    if (!trimmed) continue;
+    const match = trimmed.match(/^\[(\d{1,3}:\d{2}(?::\d{2})?)\]\s*(.*)$/);
+    if (match) {
+      const sec = parseYoutubeTimestamp(match[1]);
+      if (sec !== null) {
+        lastSeconds = sec;
+      }
+      const text = (match[2] || '').trim();
+      if (text) {
+        parsed.push({ seconds: lastSeconds, text });
+      }
+    } else {
+      parsed.push({ seconds: lastSeconds, text: trimmed });
+    }
+  }
+  return parsed;
+}
+
+/**
+ * Chia phụ đề thành các Đợt gọi API (Batches) chứa các Khung giờ hiển thị (Slots [start - end]):
+ * - Ý tưởng 1: Ưu tiên Chapter gốc của YouTube; không có mới chia khung đều (3p/5p/15p/45-60p)
+ *   và luôn khép khung cuối đúng bằng tổng thời lượng video (18:21 / 09:00:00).
+ * - Tối ưu Token: Gộp nhiều slot vào ít request API (1-2 request cho video 18 phút thay vì 6 request riêng).
+ */
+function splitYoutubeTranscriptIntoTimeChunks(
+  transcript,
+  durationSeconds = 0,
+  summaryLevel = 'simple',
+  rawChapters = []
+) {
+  const mode = normalizeYoutubeSummaryMode(summaryLevel, 'simple');
+  const parsedLines = parseYoutubeTranscriptLines(transcript);
+  if (!parsedLines.length) {
+    const raw = String(transcript || '').trim();
+    const safeDur = Math.max(0, Number(durationSeconds) || 0);
+    const useHours = safeDur >= 3600;
+    const endLbl = formatYoutubeSeconds(safeDur, useHours);
+    return {
+      totalDurationSec: safeDur,
+      coveredDurationSec: safeDur,
+      isPartialTranscript: false,
+      useHoursFormat: useHours,
+      usedChapters: false,
+      chunks: raw
+        ? [{
+            index: 0,
+            startSec: 0,
+            endSec: safeDur,
+            startLabel: formatYoutubeSeconds(0, useHours),
+            endLabel: endLbl,
+            slots: [{ startSec: 0, endSec: safeDur, startLabel: formatYoutubeSeconds(0, useHours), endLabel: endLbl, title: '', isChapter: false }],
+            text: raw.slice(0, 36000)
+          }]
+        : []
+    };
+  }
+
+  const maxLineSec = parsedLines.reduce((max, item) => Math.max(max, item.seconds), 0);
+  const declaredDurationSec = Math.max(0, Number(durationSeconds) || 0);
+  const totalDurationSec = Math.max(declaredDurationSec, maxLineSec, 15);
+  const useHoursFormat = totalDurationSec >= 3600;
+  const groupIntervalSec =
+    totalDurationSec > 6 * 3600 ? 45 : totalDurationSec >= 3 * 3600 ? 35 : totalDurationSec >= 3600 ? 25 : 15;
+
+  // Nếu transcript không có mốc thời gian tăng dần (tất cả seconds = 0), giữ các đợt gọn theo ký tự
+  if (maxLineSec === 0) {
+    const compactedAll = compactYoutubeTranscriptLines(parsedLines, groupIntervalSec, useHoursFormat);
+    const endLbl = formatYoutubeSeconds(totalDurationSec, useHoursFormat);
+    return {
+      totalDurationSec,
+      coveredDurationSec: totalDurationSec,
+      isPartialTranscript: false,
+      useHoursFormat,
+      usedChapters: false,
+      chunks: [{
+        index: 0,
+        startSec: 0,
+        endSec: totalDurationSec,
+        startLabel: formatYoutubeSeconds(0, useHoursFormat),
+        endLabel: endLbl,
+        slots: [{ startSec: 0, endSec: totalDurationSec, startLabel: formatYoutubeSeconds(0, useHoursFormat), endLabel: endLbl, title: '', isChapter: false }],
+        text: compactedAll.slice(0, 36000)
+      }]
+    };
+  }
+
+  // Không giả tạo khung giờ cho phần đuôi bị mất phụ đề lớn (> 180s & thiếu > 22% cuối video)
+  const trailingMissingSec = declaredDurationSec - maxLineSec;
+  const isSeverelyTruncatedTail =
+    declaredDurationSec >= 120 &&
+    trailingMissingSec > Math.max(180, declaredDurationSec * 0.22);
+  const effectiveEndSec = isSeverelyTruncatedTail
+    ? Math.min(declaredDurationSec, maxLineSec + 15)
+    : totalDurationSec;
+
+  // Bước 1: Tạo danh sách khung giờ [start - end] (Ưu tiên Chapter gốc của YouTube)
+  let rawSlots = normalizeYoutubeChapterSlots(rawChapters, effectiveEndSec, useHoursFormat);
+  const usedChapters = rawSlots.length >= 2;
+  if (!usedChapters) {
+    rawSlots = buildUniformTimeSlots(effectiveEndSec, mode, useHoursFormat);
+  }
+
+  // Chia nhỏ nếu một Chapter đơn lẻ quá dài (> 90 phút trên video nhiều giờ) để giữ kích thước mỗi slot an toàn
+  const maxSingleSlotSec = effectiveEndSec >= 3 * 3600 ? 60 * 60 : 90 * 60;
+  const slots = [];
+  for (const s of rawSlots) {
+    const span = s.endSec - s.startSec;
+    if (s.isChapter && span > maxSingleSlotSec) {
+      const partsCount = Math.ceil(span / maxSingleSlotSec);
+      const stepSec = Math.ceil(span / partsCount);
+      for (let p = 0; p < partsCount; p += 1) {
+        const subStart = s.startSec + p * stepSec;
+        const subEnd = p === partsCount - 1 ? s.endSec : Math.min(s.endSec, subStart + stepSec);
+        if (subEnd <= subStart) continue;
+        slots.push({
+          startSec: subStart,
+          endSec: subEnd,
+          startLabel: formatYoutubeSeconds(subStart, useHoursFormat),
+          endLabel: formatYoutubeSeconds(subEnd, useHoursFormat),
+          title: s.title ? `${s.title} — Phần ${p + 1}/${partsCount}` : '',
+          isChapter: true
+        });
+      }
+    } else {
+      slots.push(s);
+    }
+  }
+
+  // Bước 2: Gắn phụ đề thực tế vào từng slot (có overlap nhẹ 12s để không đứt câu giữa hai khung)
+  const overlapSec = 12;
+  const maxSingleSlotChars = 22000;
+  let sampledSlotCount = 0;
+  let coalescedSampledCount = 0;
+  let compactedChapterSlotCount = 0;
+
+  const populatedSlots = slots.map((slot, idx) => {
+    const sliceStart = Math.max(0, slot.startSec - (idx > 0 ? overlapSec : 0));
+    const slotLines = parsedLines.filter((item) => item.seconds >= sliceStart && item.seconds <= slot.endSec);
+    let slotCompacted = compactYoutubeTranscriptLines(slotLines, groupIntervalSec, useHoursFormat);
+    let slotWasSampled = false;
+    if (slotCompacted.length > maxSingleSlotChars) {
+      slotCompacted = sampleYoutubeTranscriptWithSlices(slotCompacted, maxSingleSlotChars, 3);
+      sampledSlotCount += 1;
+      slotWasSampled = true;
+    }
+    const headerTitle = slot.title ? ` (${slot.title})` : '';
+    const sampleTag = slotWasSampled ? ' [Mẫu đại diện đầu–giữa–cuối khung]' : '';
+    const framedText = `=== [${slot.startLabel} - ${slot.endLabel}]${headerTitle}${sampleTag} ===\n${slotCompacted || '(Khoảng lặng / không có lời thoại trong khung này)'}`;
+    return {
+      ...slot,
+      hasSpeech: Boolean(slotCompacted),
+      framedText
+    };
+  });
+
+  // Bước 3: Đóng gói thông minh các slot thành Đợt gọi API (Chunks) dựa trên chế độ học, thời lượng & mật độ ký tự thực tế
+  let maxBatchDurationSec;
+  let maxSlotsPerBatch;
+  let maxBatchChars;
+
+  if (effectiveEndSec < 3600) {
+    if (mode === 'detailed') {
+      // Chuẩn 20 phút (ví dụ 19:42 = 7 khung 3 phút): đóng gói 12p30s / 4 khung -> đúng 2 đợt gọi cân đối (4 khung + 3 khung)
+      maxBatchDurationSec = 12 * 60 + 30;
+      maxSlotsPerBatch = 4;
+      maxBatchChars = 24000;
+    } else {
+      // Dễ hiểu & Trung bình cho video <= 24 phút -> gói gọn trong 1 đợt gọi duy nhất
+      maxBatchDurationSec = 24 * 60;
+      maxSlotsPerBatch = 8;
+      maxBatchChars = 34000;
+    }
+  } else {
+    // Video dài 1–12+ giờ: ưu tiên đóng gói theo dung lượng ký tự thực tế (video ít lời thoại 9h gộp ít đợt hơn bài giảng dày 3h)
+    maxBatchDurationSec = effectiveEndSec; // Không cắt cứng theo phút nếu lời thoại thưa
+    maxSlotsPerBatch = mode === 'detailed' ? 4 : 6;
+    maxBatchChars = mode === 'detailed' ? 28000 : 36000;
+  }
+
+  let chunks = [];
+  let currentSlots = [];
+  let currentChars = 0;
+
+  const flushBatch = () => {
+    if (!currentSlots.length) return;
+    const first = currentSlots[0];
+    const last = currentSlots[currentSlots.length - 1];
+    chunks.push({
+      index: chunks.length,
+      startSec: first.startSec,
+      endSec: last.endSec,
+      startLabel: first.startLabel,
+      endLabel: last.endLabel,
+      slots: currentSlots.map(({ framedText, hasSpeech, ...meta }) => meta),
+      text: currentSlots.map((s) => s.framedText).join('\n\n')
+    });
+    currentSlots = [];
+    currentChars = 0;
+  };
+
+  for (const slot of populatedSlots) {
+    const batchSpan = currentSlots.length ? slot.endSec - currentSlots[0].startSec : 0;
+    if (
+      currentSlots.length > 0 &&
+      (currentSlots.length >= maxSlotsPerBatch ||
+        batchSpan > maxBatchDurationSec ||
+        currentChars + slot.framedText.length > maxBatchChars)
+    ) {
+      flushBatch();
+    }
+    currentSlots.push(slot);
+    currentChars += slot.framedText.length;
+  }
+  flushBatch();
+
+  // Chốt an toàn chống bùng nổ số lượng request trên video siêu dài (ví dụ 9–12 giờ có hàng chục chapter nhỏ)
+  while (chunks.length > MAX_YOUTUBE_API_CHUNKS) {
+    const merged = [];
+    for (let i = 0; i < chunks.length; i += 2) {
+      if (i + 1 >= chunks.length) {
+        merged.push({ ...chunks[i], index: merged.length });
+        continue;
+      }
+      const a = chunks[i];
+      const b = chunks[i + 1];
+      let combinedSlots = [...a.slots, ...b.slots];
+      // Bảo toàn toàn bộ mốc thời gian & tiêu đề Chapter bằng cách gộp cặp tuần tự thay vì cắt bỏ bằng .slice(0, 8)
+      while (combinedSlots.length > 8) {
+        compactedChapterSlotCount += 1;
+        const folded = [];
+        for (let sIdx = 0; sIdx < combinedSlots.length; sIdx += 2) {
+          if (sIdx + 1 >= combinedSlots.length) {
+            folded.push(combinedSlots[sIdx]);
+            continue;
+          }
+          const s1 = combinedSlots[sIdx];
+          const s2 = combinedSlots[sIdx + 1];
+          const joinedTitle = [s1.title, s2.title].filter(Boolean).join(' • ');
+          folded.push({
+            startSec: s1.startSec,
+            endSec: s2.endSec,
+            startLabel: s1.startLabel,
+            endLabel: s2.endLabel,
+            title: joinedTitle.length > 140 ? `${joinedTitle.slice(0, 137)}...` : joinedTitle,
+            isChapter: Boolean(s1.isChapter || s2.isChapter)
+          });
+        }
+        combinedSlots = folded;
+      }
+      const combinedText = `${a.text}\n\n${b.text}`;
+      let boundedMergedText = combinedText;
+      if (combinedText.length > 40000) {
+        boundedMergedText = sampleYoutubeTranscriptWithSlices(combinedText, 40000, 4);
+        coalescedSampledCount += 1;
+      }
+      merged.push({
+        index: merged.length,
+        startSec: a.startSec,
+        endSec: b.endSec,
+        startLabel: a.startLabel,
+        endLabel: b.endLabel,
+        slots: combinedSlots,
+        text: boundedMergedText
+      });
+    }
+    chunks = merged;
+  }
+
+  return {
+    totalDurationSec,
+    coveredDurationSec: effectiveEndSec,
+    isPartialTranscript: isSeverelyTruncatedTail,
+    isSampledTranscript: sampledSlotCount > 0 || coalescedSampledCount > 0,
+    sampledSlotCount,
+    coalescedSampledCount,
+    compactedChapterSlotCount,
+    useHoursFormat,
+    usedChapters,
+    chunks
+  };
+}
+
+function sampleYoutubeTranscriptWithSlices(transcript, maxChars = 18000, sliceCount = 3) {
+  const text = String(transcript || '');
+  if (text.length <= maxChars) return text;
+  const count = Math.max(2, Math.floor(sliceCount));
+  const perSlice = Math.floor(maxChars / count);
+
+  const alignToLineStart = (offset) => {
+    if (offset <= 0) return 0;
+    const nl = text.indexOf('\n', offset);
+    return nl < 0 ? offset : nl + 1;
+  };
+  const takeSlice = (offset) => {
+    const start = alignToLineStart(offset);
+    const targetEnd = Math.min(text.length, start + perSlice);
+    if (targetEnd === text.length) return text.slice(start, targetEnd).trim();
+    const nl = text.lastIndexOf('\n', targetEnd);
+    const end = nl > start ? nl : targetEnd;
+    return text.slice(start, end).trim();
+  };
+
+  const maxStart = Math.max(0, text.length - perSlice);
+  const parts = [];
+  for (let i = 0; i < count; i += 1) {
+    const offset = count === 1 ? 0 : Math.floor((maxStart * i) / (count - 1));
+    const seg = takeSlice(offset);
+    if (seg) parts.push(seg);
+  }
+  return parts.join('\n\n').slice(0, maxChars);
+}
+
+function buildPracticeTransferTranscript(transcript, maxChars = 42000) {
+  const text = String(transcript || '').trim();
+  if (!text) return '';
+  if (text.length <= maxChars) return text;
+  return sampleYoutubeTranscriptWithSlices(text, maxChars, 6);
+}
 
 function sampleYoutubeTranscript(transcript) {
   const text = String(transcript || '');
@@ -4769,7 +5562,7 @@ async function discoverYoutubeFlashModels(apiKey) {
   }
 }
 
-async function callYouTubeGeminiWithFallback(prompt, apiKey, onModelAttempt) {
+async function callYouTubeGeminiWithFallback(prompt, apiKey, onModelAttempt, options = {}) {
   const discoveredModels = await discoverYoutubeFlashModels(apiKey);
   const mergedCandidates = [];
 
@@ -4783,6 +5576,8 @@ async function callYouTubeGeminiWithFallback(prompt, apiKey, onModelAttempt) {
     }
   });
 
+  const requestedMaxTokens = Number(options.maxOutputTokens) || 16384;
+  const timeoutMs = Number(options.timeoutMs) || 60000;
   let lastError = null;
   const maxRounds = 2;
 
@@ -4791,8 +5586,10 @@ async function callYouTubeGeminiWithFallback(prompt, apiKey, onModelAttempt) {
       if (typeof onModelAttempt === 'function') {
         onModelAttempt(round === 1 ? modelName : `${modelName} (thử lại)`);
       }
+
+      const tokenLimitForAttempt = round === 1 ? requestedMaxTokens : Math.min(requestedMaxTokens, 12288);
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 35000);
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
       try {
         const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(apiKey)}`;
@@ -4804,7 +5601,7 @@ async function callYouTubeGeminiWithFallback(prompt, apiKey, onModelAttempt) {
             contents: [{ parts: [{ text: prompt }] }],
             generationConfig: {
               responseMimeType: 'application/json',
-              maxOutputTokens: 8192,
+              maxOutputTokens: tokenLimitForAttempt,
               temperature: 0.3
             }
           })
@@ -4813,23 +5610,22 @@ async function callYouTubeGeminiWithFallback(prompt, apiKey, onModelAttempt) {
 
         if (!response.ok) {
           const message = String(data?.error?.message || `HTTP ${response.status}: ${response.statusText}`);
-          const isRetryable =
-            [400, 404, 429, 500, 502, 503, 504].includes(response.status) ||
-            /high\s*demand|overloaded|unavailable|resource_exhausted|quota/i.test(message);
           console.warn(
             `[YouTube Gemini][Lượt ${round}] Model ${modelName} trả về HTTP ${response.status}: ${message}`
           );
-          lastError = new Error(message);
+          const httpErr = new Error(message);
+          if (response.status === 429 || /(429|quota|rate\s*limit|resource_exhausted)/i.test(message)) {
+            httpErr.isQuotaError = true;
+          }
+          lastError = httpErr;
           if (ytLastWorkingModel === modelName) {
             ytLastWorkingModel = '';
-          }
-          if (isRetryable) {
-            continue;
           }
           continue;
         }
 
-        const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        const candidate = data?.candidates?.[0];
+        const rawText = candidate?.content?.parts?.[0]?.text;
         if (!rawText) {
           lastError = new Error(`Model ${modelName} không trả về nội dung.`);
           continue;
@@ -4841,27 +5637,40 @@ async function callYouTubeGeminiWithFallback(prompt, apiKey, onModelAttempt) {
             .replace(/^```(?:json)?\s*/i, '')
             .replace(/\s*```$/i, '')
             .trim());
+          const normalizedSummary = Array.isArray(parsed.summary)
+            ? parsed.summary.map((line) => String(line || '').trim()).filter(Boolean).join('\n')
+            : typeof parsed.summary === 'string'
+              ? parsed.summary
+              : '';
           if (
             !parsed ||
             typeof parsed.title !== 'string' ||
-            typeof parsed.summary !== 'string' ||
+            !normalizedSummary.trim() ||
             !Array.isArray(parsed.keywords)
           ) {
             throw new Error('Dữ liệu JSON tóm tắt YouTube không đúng cấu trúc.');
           }
+          // Tách dòng nếu model gộp nhiều mốc [MM:SS] hoặc khung [MM:SS - MM:SS] trên cùng một dòng
+          const formattedSummary = normalizedSummary
+            .replace(/([^\n])\s+(\[\d{1,3}:\d{2}(?::\d{2})?(?:\s*[-–—]\s*\d{1,3}:\d{2}(?::\d{2})?)?\])/g, '$1\n$2')
+            .trim();
           ytLastWorkingModel = modelName;
           return {
             title: parsed.title.trim(),
-            summary: parsed.summary.trim(),
+            summary: formattedSummary,
             keywords: parsed.keywords
           };
         } catch (error) {
-          lastError = error;
+          const finishReason = candidate?.finishReason || '';
+          lastError =
+            finishReason === 'MAX_TOKENS'
+              ? new Error(`Model ${modelName} vượt hạn mức output tokens (${tokenLimitForAttempt}).`)
+              : error;
           continue;
         }
       } catch (error) {
         lastError = error.name === 'AbortError'
-          ? new Error(`Model ${modelName} quá thời gian chờ sau 35 giây.`)
+          ? new Error(`Model ${modelName} quá thời gian chờ sau ${Math.round(timeoutMs / 1000)} giây.`)
           : error;
         if (ytLastWorkingModel === modelName) {
           ytLastWorkingModel = '';
@@ -4877,7 +5686,7 @@ async function callYouTubeGeminiWithFallback(prompt, apiKey, onModelAttempt) {
     }
 
     if (round < maxRounds) {
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      await new Promise((resolve) => setTimeout(resolve, 900));
     }
   }
 
@@ -4886,44 +5695,625 @@ async function callYouTubeGeminiWithFallback(prompt, apiKey, onModelAttempt) {
 
 const callYoutubeGeminiWithFallback = callYouTubeGeminiWithFallback;
 
-function buildYoutubeSummaryPrompt(videoData, summaryLevel) {
-  const levelGuidance = {
-    short: 'Tóm tắt cốt lõi trong 1–2 câu; mỗi câu/ý ở một dòng riêng.',
-    medium: 'Tóm tắt thành 4–6 ý chính, mỗi ý ở một dòng riêng.',
-    detailed: 'Chia nội dung thành các phần/chương quan trọng, mỗi phần ở một dòng riêng và nêu đủ diễn biến, luận cứ, ví dụ cùng số liệu quan trọng.',
-    simple: 'Giải thích cho người mới bắt đầu bằng tiếng Việt gần gũi, gồm ba ý trên các dòng riêng: nói nôm na cốt lõi là gì; giải mã thuật ngữ khó bằng ví dụ; nêu ý nghĩa thực tế.'
-  };
-  const rawTranscriptLength = String(videoData.transcript || '').trim().length;
-  const transcript = sampleYoutubeTranscript(videoData.transcript);
-  const effectiveLength = Math.max(rawTranscriptLength, transcript.length);
-  const targetKeywordRange =
-    effectiveLength < 3000
-      ? '10–14'
-      : '18–25';
+function analyzeYoutubeSpeechLexicon(rawText, durationSec = 0, detectedOriginalLang = '') {
+  const stripped = String(rawText || '')
+    .replace(/===\s*\[[^\]]+\][^=\n]*===/g, ' ')
+    .replace(/\[\d{1,3}:\d{2}(?::\d{2})?\]/g, ' ')
+    .replace(/\(Khoảng lặng[^)]*\)/gi, ' ');
 
-  return `Bạn là gia sư chuyên tóm tắt bài học từ video YouTube cho sinh viên.
-Viết toàn bộ title và summary bằng tiếng Việt tự nhiên, dễ hiểu.
-Mức tóm tắt: ${levelGuidance[summaryLevel] || levelGuidance.medium}
-Trong summary, bắt đầu mỗi ý/chương quan trọng bằng mốc thời gian chính xác dạng [MM:SS] hoặc [HH:MM:SS] lấy từ phụ đề; không tự đoán thời gian.
-Không dùng tiêu đề Markdown ###, dấu **, dấu * hoặc định dạng Markdown thừa. Có thể dùng dấu gạch đầu dòng đơn giản.
-BẮT BUỘC quét xuyên suốt cả 3 lát cắt thời gian (PHẦN ĐẦU, PHẦN GIỮA và PHẦN CUỐI video — phân bổ đều, tuyệt đối không chỉ dừng ở vài phút đầu), xuất ĐẦY ĐỦ ${targetKeywordRange} mục trong mảng "keywords" (bao gồm cả từ vựng chuyên ngành lẫn cụm động từ / cụm từ học thuật collocations), mỗi mục gồm đủ: "term", "ipa", "pos" (n, v, adj, adv hoặc phrase), "meaning" (nghĩa tiếng Việt ngắn gọn sát ngữ cảnh), "context" (câu ví dụ tiếng Anh trích trực tiếp từ lời thoại video chứa từ khóa) và "timestamp" (mốc thời gian chính xác dạng "MM:SS" nơi từ khóa xuất hiện trong phụ đề).
-Chỉ trả về một JSON hợp lệ theo cấu trúc {"title":"Tiêu đề video gọn gàng","summary":"Các ý tóm tắt, ngăn cách bằng ký tự xuống dòng \\n","keywords":[{"term":"English term","ipa":"/IPA/","pos":"n","meaning":"nghĩa tiếng Việt","context":"English sentence from transcript containing the term","timestamp":"MM:SS"}]}. Không thêm lời dẫn hoặc Markdown.
+  const tokens = stripped.match(/[\p{L}][\p{L}'-]*/gu) || [];
+  let totalWords = 0;
+  let asciiLatinWords = 0;
+  let vietnameseMarkedWords = 0;
+  let nonLatinWords = 0;
+  const uniqueEnglishContent = new Set();
+
+  const viRegex = /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i;
+  const asciiWordRegex = /^[A-Za-z][A-Za-z'-]{1,}$/;
+
+  for (const tok of tokens) {
+    totalWords += 1;
+    if (asciiWordRegex.test(tok)) {
+      asciiLatinWords += 1;
+      const lower = tok.toLowerCase().replace(/^['-]+|['-]+$/g, '');
+      if (lower.length >= 3 && !BASIC_ENGLISH_STOPWORDS.has(lower)) {
+        uniqueEnglishContent.add(lower);
+      }
+    } else if (viRegex.test(tok)) {
+      vietnameseMarkedWords += 1;
+    } else if (!/^[A-Za-z]+$/.test(tok)) {
+      nonLatinWords += 1;
+    }
+  }
+
+  const safeMin = Math.max(0.25, (Number(durationSec) || 60) / 60);
+  const wordsPerMin = totalWords / safeMin;
+  const englishRatio = totalWords > 0 ? asciiLatinWords / totalWords : 0;
+  const viRatio = totalWords > 0 ? vietnameseMarkedWords / totalWords : 0;
+  const origBase = String(detectedOriginalLang || '').trim().toLowerCase().split(/[-_]/)[0];
+
+  // Xác định mật độ tiếng Anh thực tế từ nhiều tín hiệu (metadata ngôn ngữ gốc + tỷ lệ từ vựng, không chỉ dựa vào dấu tiếng Việt)
+  const hasMinimalEnglish =
+    uniqueEnglishContent.size < 3 ||
+    (origBase && origBase !== 'en' && englishRatio < 0.14 && uniqueEnglishContent.size < 12) ||
+    (viRatio > 0.10 && englishRatio < 0.45 && uniqueEnglishContent.size < 14) ||
+    (nonLatinWords > asciiLatinWords && englishRatio < 0.15);
+
+  return {
+    totalWords,
+    asciiLatinWords,
+    uniqueEnglishCount: uniqueEnglishContent.size,
+    wordsPerMin: +wordsPerMin.toFixed(1),
+    englishRatio: +englishRatio.toFixed(3),
+    viRatio: +viRatio.toFixed(3),
+    hasMinimalEnglish
+  };
+}
+
+function getReferenceVocabRangeForDuration(durationSec, mode) {
+  const minutes = Math.max(0.2, (Number(durationSec) || 0) / 60);
+  const m = normalizeYoutubeSummaryMode(mode, 'simple');
+  const table = [
+    { maxMin: 5, simple: [3, 5], medium: [5, 8], detailed: [8, 12] },
+    { maxMin: 10, simple: [5, 10], medium: [10, 15], detailed: [15, 20] },
+    { maxMin: 20, simple: [10, 15], medium: [15, 25], detailed: [25, 40] },
+    { maxMin: 30, simple: [15, 20], medium: [20, 35], detailed: [35, 45] },
+    { maxMin: 60, simple: [20, 30], medium: [30, 45], detailed: [38, 45] },
+    { maxMin: Infinity, simple: [24, 34], medium: [32, 45], detailed: [40, 45] }
+  ];
+  const row = table.find((r) => minutes <= r.maxMin) || table[table.length - 1];
+  return row[m] || row.simple;
+}
+
+function computeAdaptiveYoutubeVocabPlan(videoData, chunks, summaryLevel) {
+  const mode = normalizeYoutubeSummaryMode(summaryLevel, 'simple');
+  const isMetadataOnly = Boolean(videoData?.missingCCWarning);
+  const effectiveDurSec = Math.max(
+    15,
+    Number(videoData?.coveredDurationSec) || Number(videoData?.durationSeconds) || 60
+  );
+  const combinedChunkText = Array.isArray(chunks) && chunks.length
+    ? chunks.map((c) => c.text || '').join('\n')
+    : String(videoData?.transcript || '');
+  const fullSourceTextForDensity = String(videoData?.transcript || '').trim() || combinedChunkText;
+
+  const lex = analyzeYoutubeSpeechLexicon(
+    fullSourceTextForDensity,
+    effectiveDurSec,
+    videoData?.detectedOriginalLang || videoData?.transcriptLang || ''
+  );
+
+  if (isMetadataOnly) {
+    const metaMax = Math.min(8, lex.uniqueEnglishCount);
+    return {
+      mode,
+      lexicon: lex,
+      videoMin: 0,
+      videoMax: metaMax,
+      aggregateCap: MAX_YOUTUBE_VOCAB_ITEMS,
+      allowEmpty: true,
+      chunkBudgets: (chunks || []).map(() => ({ min: 0, max: metaMax, allowEmpty: true }))
+    };
+  }
+
+  if (lex.hasMinimalEnglish) {
+    const naturalMax = Math.min(10, lex.uniqueEnglishCount);
+    const totalChunks = Math.max(1, (chunks || []).length);
+    const perChunkMax = naturalMax > 0 ? Math.max(1, Math.min(5, Math.ceil(naturalMax / totalChunks))) : 0;
+    return {
+      mode,
+      lexicon: lex,
+      videoMin: 0,
+      videoMax: naturalMax,
+      aggregateCap: MAX_YOUTUBE_VOCAB_ITEMS,
+      allowEmpty: true,
+      chunkBudgets: (chunks || []).map(() => ({ min: 0, max: perChunkMax, allowEmpty: true }))
+    };
+  }
+
+  const [baseMin, baseMax] = getReferenceVocabRangeForDuration(effectiveDurSec, mode);
+  // Điều chỉnh linh hoạt theo mật độ lời thoại & độ giàu từ vựng thực sự trong phụ đề (tránh ép số lượng trên video ngắn/thưa lời)
+  const densityScale =
+    effectiveDurSec < 60
+      ? Math.min(1, Math.max(0.25, lex.uniqueEnglishCount / 18))
+      : Math.min(1.08, Math.max(0.35, lex.wordsPerMin / 110));
+  const lexicalCeiling = Math.min(MAX_YOUTUBE_VOCAB_ITEMS, Math.max(1, Math.floor(lex.uniqueEnglishCount * 0.55)));
+
+  let videoMax = Math.min(MAX_YOUTUBE_VOCAB_ITEMS, lexicalCeiling, Math.max(1, Math.round(baseMax * densityScale)));
+  let videoMin = Math.min(videoMax, Math.max(0, Math.round(baseMin * densityScale)));
+  if (lex.uniqueEnglishCount < 6) {
+    videoMin = 0;
+  }
+
+  const chunkLexWeights = (chunks || []).map((chunk) => {
+    const cLex = analyzeYoutubeSpeechLexicon(
+      chunk?.text || '',
+      Math.max(15, (chunk?.endSec || 60) - (chunk?.startSec || 0)),
+      videoData?.detectedOriginalLang || ''
+    );
+    return Math.max(1, cLex.uniqueEnglishCount);
+  });
+  const totalWeight = chunkLexWeights.reduce((acc, w) => acc + w, 0) || 1;
+  const maxPerSingleChunk = mode === 'detailed' ? 22 : 25;
+
+  const chunkBudgets = chunkLexWeights.map((w) => {
+    const share = w / totalWeight;
+    const cMax = videoMax === 0 ? 0 : Math.min(maxPerSingleChunk, Math.max(2, Math.ceil(videoMax * share * 1.12)));
+    const cMin = videoMin === 0 ? 0 : Math.min(cMax, Math.max(1, Math.floor(videoMin * share * 0.9)));
+    return {
+      min: cMin,
+      max: cMax,
+      allowEmpty: videoMin === 0 || w <= 2
+    };
+  });
+
+  return {
+    mode,
+    lexicon: lex,
+    videoMin,
+    videoMax,
+    aggregateCap: MAX_YOUTUBE_VOCAB_ITEMS,
+    allowEmpty: videoMin === 0,
+    chunkBudgets
+  };
+}
+
+function normalizeYoutubeVocabDedupKey(term) {
+  return String(term || '')
+    .trim()
+    .toLowerCase()
+    .replace(/^['"`(\[]+|['"`)\],.;:!?]+$/g, '')
+    .replace(/\s+/g, ' ');
+}
+
+function sanitizeYoutubeKeywordItem(rawItem) {
+  if (!rawItem || typeof rawItem !== 'object') return null;
+  const term = String(rawItem.term || '').replace(/\s+/g, ' ').trim();
+  const meaning = String(rawItem.meaning || '').replace(/\s+/g, ' ').trim();
+  if (!term || !meaning || /^[\d\W_]+$/.test(term) || term.length > 80) return null;
+  const posRaw = String(rawItem.pos || '').replace(/[()]/g, '').trim().toLowerCase();
+  const pos = ['n', 'v', 'adj', 'adv', 'phrase', 'phrasal verb', 'collocation', 'idiom'].includes(posRaw)
+    ? posRaw
+    : posRaw.slice(0, 16) || 'n';
+  return {
+    term,
+    ipa: String(rawItem.ipa || '').trim(),
+    pos,
+    meaning,
+    context: String(rawItem.context || '').replace(/\s+/g, ' ').trim(),
+    timestamp: String(rawItem.timestamp || '').replace(/^\[|\]$/g, '').trim()
+  };
+}
+
+function selectBalancedYoutubeKeywords(chunkKeywordBuckets, maxCap = MAX_YOUTUBE_VOCAB_ITEMS) {
+  const seen = new Set();
+  const cleanBuckets = chunkKeywordBuckets.map((bucket, chunkIdx) => {
+    const items = [];
+    for (const raw of Array.isArray(bucket) ? bucket : []) {
+      const clean = sanitizeYoutubeKeywordItem(raw);
+      if (!clean) continue;
+      const key = normalizeYoutubeVocabDedupKey(clean.term);
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      items.push({ ...clean, __chunkIdx: chunkIdx, __itemIdx: items.length });
+    }
+    return items;
+  });
+
+  const totalUnique = cleanBuckets.reduce((sum, b) => sum + b.length, 0);
+  if (totalUnique <= maxCap) {
+    return cleanBuckets
+      .flat()
+      .map(({ __chunkIdx, __itemIdx, ...rest }) => rest);
+  }
+
+  // Phân bổ công bằng theo vòng (round-robin) qua tất cả các chặng đầu – giữa – cuối rồi khôi phục đúng thứ tự thời gian
+  const picked = [];
+  const cursors = cleanBuckets.map(() => 0);
+  let addedInPass = true;
+  while (picked.length < maxCap && addedInPass) {
+    addedInPass = false;
+    for (let c = 0; c < cleanBuckets.length && picked.length < maxCap; c += 1) {
+      if (cursors[c] < cleanBuckets[c].length) {
+        picked.push(cleanBuckets[c][cursors[c]]);
+        cursors[c] += 1;
+        addedInPass = true;
+      }
+    }
+  }
+
+  return picked
+    .sort((a, b) => (a.__chunkIdx !== b.__chunkIdx ? a.__chunkIdx - b.__chunkIdx : a.__itemIdx - b.__itemIdx))
+    .map(({ __chunkIdx, __itemIdx, ...rest }) => rest);
+}
+
+function buildYoutubeSummaryPrompt(videoData, summaryLevel, chunkMeta = null) {
+  const mode = normalizeYoutubeSummaryMode(summaryLevel, 'simple');
+  const isMetadataOnly = Boolean(videoData?.missingCCWarning || chunkMeta?.isMetadataOnly);
+
+  const modeInstructions = {
+    simple: [
+      'CHẾ ĐỘ HỌC: DỄ HIỂU (Dành cho người mới bắt đầu & sinh viên cần nắm chắc bản chất nhanh).',
+      '- Dùng tiếng Việt gần gũi, sáng sủa, giải thích các khái niệm khó bằng ngôn ngữ bình dân dễ hình dung.',
+      '- Giữ lại các thuật ngữ quan trọng trong cặp **in đậm** kèm giải nghĩa ngắn gọn và mối liên hệ giữa các ý.',
+      '- Đưa ví dụ quen thuộc hoặc hình ảnh so sánh dễ hiểu khi cần thiết, nhưng nếu ví dụ/giải thích do bạn bổ sung ngoài lời thoại gốc thì BẮT BUỘC đặt trong ngoặc vuông dạng [Ví dụ minh họa: ...] hoặc [Giải thích thêm: ...].',
+      '- Ưu tiên sự dễ hiểu và trọn vẹn ý nghĩa cốt lõi thay vì nén quá ngắn (mỗi khung giờ viết 2–4 câu mạch lạc).'
+    ].join('\n'),
+    medium: [
+      'CHẾ ĐỘ HỌC: TRUNG BÌNH (Bao phủ kiến thức cân bằng, có cấu trúc và tính ứng dụng).',
+      '- Trình bày đầy đủ các luận điểm chính, cơ chế hoạt động và mối quan hệ nguyên nhân – kết quả giữa các khái niệm.',
+      '- Bảo toàn chuẩn xác các **thuật ngữ chuyên môn** quan trọng và bối cảnh sử dụng thực tế trong bài.',
+      '- Nêu ví dụ thực tiễn xuất hiện trong video; nếu bổ sung liên hệ ứng dụng bên ngoài lời thoại thì đặt rõ trong [Liên hệ thực tế: ...] hoặc [Ví dụ minh họa: ...].',
+      '- Cân bằng giữa độ chi tiết và độ thoáng dễ đọc (mỗi khung giờ viết 3–4 câu rõ cấu trúc).'
+    ].join('\n'),
+    detailed: [
+      'CHẾ ĐỘ HỌC: CHUYÊN SÂU (Phân tích học thuật, bản chất Why & How cho người học nâng cao).',
+      '- Phân tích sâu VÌ SAO (Why) và NHƯ THẾ NÀO (How): nguyên lý nền tảng, cơ chế vận hành, điều kiện áp dụng, giới hạn và sự đánh đổi (trade-offs) khi nội dung hỗ trợ.',
+      '- Bảo toàn công thức, số liệu, định nghĩa và hệ thống **thuật ngữ học thuật**; chỉ rõ sự khác biệt giữa các khái niệm dễ nhầm lẫn.',
+      '- Trình bày sâu sắc nhưng rõ ràng, không lặp ý, không dùng văn phong rắc rối giả tạo; phần tổng hợp phân tích hoặc lưu ý bẫy nhầm lẫn ngoài lời thoại trực tiếp phải gắn nhãn [Phân tích chuyên sâu: ...] hoặc [Giải thích thêm: ...] (mỗi khung giờ viết 4–6 câu chặt chẽ).'
+    ].join('\n')
+  };
+
+  const subjectAdaptationInstruction = [
+    'THÍCH ỨNG CHỦ ĐỀ TỰ ĐỘNG (tự nhận diện chủ đề từ tiêu đề & nguồn hiện có):',
+    '- Lập trình và kỹ thuật phần mềm: giải thích cú pháp, tên hàm, luồng thực thi, hành vi mã và lỗi thường gặp.',
+    '- Toán học và khoa học: bảo toàn công thức, ký hiệu, điều kiện áp dụng và trình tự biến đổi từng bước.',
+    '- Công cụ AI, Agent và phần mềm: giải thích năng lực, workflow, cấu hình, cách sử dụng và giới hạn thực tế.',
+    '- Ngoại ngữ: làm nổi bật ngữ pháp, mẫu câu, từ vựng và ngữ cảnh sử dụng.',
+    '- Các môn học khác: giải thích khái niệm cốt lõi, cơ chế, mối quan hệ và ví dụ phù hợp.',
+    '- Phân biệt rõ thông tin từ nguồn video với phần giải thích bổ sung của AI (đặt phần AI giải thích thêm ngoài nguồn trong ngoặc vuông như [Giải thích thêm: ...] hoặc [Ví dụ minh họa: ...]); TUYỆT ĐỐI KHÔNG tự bịa đoạn mã, công thức, chi tiết giao diện hoặc thao tác minh họa không có trong nguồn hiện có.'
+  ].join('\n');
+
+  if (isMetadataOnly) {
+    const maxMetaVocab = Number(chunkMeta?.vocabMax ?? 6);
+    return `Bạn là gia sư AI hỗ trợ học tập trung thực và chuẩn xác cho sinh viên.
+LƯU Ý QUAN TRỌNG VỀ NGUỒN DỮ LIỆU: Video này hiện KHÔNG lấy được bản chép lời/phụ đề đầy đủ; bên dưới chỉ có Tiêu đề, Kênh và Mô tả hiện có của video.
+${modeInstructions[mode]}
+${subjectAdaptationInstruction}
+QUY TẮC BẮT BUỘC KHI THIẾU PHỤ ĐỀ:
+- TUYỆT ĐỐI KHÔNG tuyên bố đã phân tích toàn bộ lời thoại video, KHÔNG tự bịa mốc thời gian [MM:SS] nếu mô tả không ghi sẵn, và KHÔNG tự chế câu trích dẫn lời thoại.
+- Mở đầu phần summary bằng nhãn "[Tổng quan từ tiêu đề & mô tả hiện có]" rồi tóm lược trung thực những gì xác định được từ thông tin bên dưới; nếu mô tả có ghi sẵn các mốc chương thực tế thì chỉ dùng đúng các mốc đó.
+- Về "keywords": chỉ rút trích từ 0 đến ${maxMetaVocab} từ/cụm từ tiếng Anh thực sự xuất hiện trong tiêu đề hoặc mô tả bên dưới (nếu hoàn toàn không có từ tiếng Anh phù hợp thì trả về mảng rỗng []).
+- Chỉ dùng **in đậm** cho thuật ngữ chính; không dùng tiêu đề ### hay gạch đầu dòng *.
+Chỉ trả về một JSON hợp lệ theo cấu trúc {"title":"Tiêu đề gọn gàng","summary":"[Tổng quan từ tiêu đề & mô tả hiện có] Nội dung...","keywords":[{"term":"English term","ipa":"/IPA/","pos":"n","meaning":"nghĩa tiếng Việt","context":"Trích cụm gốc trong tiêu đề/mô tả","timestamp":""}]}. Không thêm lời dẫn.
+
+Thông tin hiện có của video:
+${chunkMeta?.chunkText || videoData?.transcript || ''}`;
+  }
+
+  const {
+    chunkIndex = 0,
+    totalChunks = 1,
+    startLabel = '00:00',
+    endLabel = '00:00',
+    slots = [],
+    useHoursFormat = false,
+    chunkText = String(videoData?.transcript || ''),
+    vocabMin = 6,
+    vocabMax = 12,
+    allowEmptyVocab = false
+  } = chunkMeta || {};
+
+  const slotListText = slots
+    .map((s) => `[${s.startLabel} - ${s.endLabel}]${s.title ? ` (${s.title})` : ''}`)
+    .join(', ');
+  const tsFormatHint = useHoursFormat ? 'HH:MM:SS' : 'MM:SS';
+  const firstSlotExample = slots[0] ? `[${slots[0].startLabel} - ${slots[0].endLabel}]` : `[${startLabel} - ${endLabel}]`;
+  const lastSlotExample = slots[slots.length - 1]
+    ? `[${slots[slots.length - 1].startLabel} - ${slots[slots.length - 1].endLabel}]`
+    : `[${startLabel} - ${endLabel}]`;
+
+  const vocabInstruction =
+    vocabMax <= 0
+      ? 'Đoạn phụ đề này không chứa từ vựng tiếng Anh cần rút trích: hãy trả về `"keywords": []` (TUYỆT ĐỐI KHÔNG tự bịa từ tiếng Anh không có trong lời thoại).'
+      : allowEmptyVocab || vocabMin === 0
+        ? `Rút trích linh hoạt khoảng 0–${vocabMax} từ/cụm từ tiếng Anh thực sự xuất hiện trong đoạn phụ đề này vào mảng "keywords" (nếu phụ đề chủ yếu là tiếng Việt hoặc ít từ mới thì chỉ lấy đúng những thuật ngữ tiếng Anh thực sự có mặt, cho phép trả về [] nếu không có; TUYỆT ĐỐI KHÔNG bịa từ ngoài nguồn).`
+        : `Rút trích linh hoạt khoảng ${vocabMin}–${vocabMax} mục từ vựng tiếng Anh giá trị nhất thực sự xuất hiện trong đợt này vào mảng "keywords" (bao gồm từ đơn hữu ích, phrasal verbs, collocations, cụm diễn đạt cố định và thuật ngữ chuyên môn sát bài học — không bó hẹp chỉ mỗi thuật ngữ hàn lâm, nhưng cũng KHÔNG gượng ép nhồi từ vô nghĩa hay bịa từ ngoài phụ đề).`;
+
+  return `Bạn là gia sư AI chuyên giảng giải bài học từ video YouTube cho sinh viên Việt Nam.
+Bạn đang xử lý ĐỢT ${chunkIndex + 1}/${totalChunks} (khung ${startLabel} đến ${endLabel}) của video.
+Viết toàn bộ title và summary bằng tiếng Việt tự nhiên, chuẩn xác.
+${modeInstructions[mode]}
+${subjectAdaptationInstruction}
+Phụ đề bên dưới đã được chia sẵn thành các KHUNG THỜI GIAN thực tế: ${slotListText || firstSlotExample}.
+QUY TẮC ĐỊNH DẠNG & CHỐNG BỊA ĐẶT BẮT BUỘC:
+- Xuất ĐÚNG MỖI KHUNG THỜI GIAN trên MỘT DÒNG RIÊNG ngăn cách bởi \\n, mở đầu chính xác bằng cặp ngoặc vuông khung giờ đó, ví dụ: ${firstSlotExample} Nội dung...
+- Trả về đầy đủ các khung từ ${firstSlotExample} đến ${lastSlotExample} theo đúng thứ tự thời gian; nếu một khung được ghi chú là khoảng lặng/không có lời thoại thì ghi ngắn gọn "(Đoạn thao tác / khoảng lặng không lời thoại)", TUYỆT ĐỐI KHÔNG tự bịa dữ kiện hay câu nói không có trong phụ đề.
+- Được phép dùng **in đậm** cho khái niệm/thuật ngữ trọng tâm; KHÔNG dùng tiêu đề Markdown ### hoặc danh sách dấu * đầu dòng.
+YÊU CẦU TỪ VỰNG ("keywords"):
+- ${vocabInstruction}
+- Mỗi mục trong "keywords" gồm đủ: "term" (dạng từ nguyên mẫu hoặc collocation/phrasal verb chuẩn), "ipa" (phiên âm Anh-Mỹ), "pos" (n, v, adj, adv, phrasal verb, collocation hoặc phrase), "meaning" (nghĩa tiếng Việt sát ngữ cảnh bài học), "context" (trích dẫn trung thực câu hoặc cụm nguyên văn từ phụ đề có chứa từ/biến thể gốc đó — KHÔNG tự chế câu ví dụ giả làm lời video), và "timestamp" (mốc "${tsFormatHint}" thực tế xuất hiện trong phụ đề).
+Chỉ trả về DUY NHẤT một JSON hợp lệ theo cấu trúc {"title":"Tiêu đề video gọn gàng","summary":"${firstSlotExample} Nội dung khung 1...\\n${lastSlotExample} Nội dung khung cuối...","keywords":[{"term":"English term or collocation","ipa":"/IPA/","pos":"v","meaning":"nghĩa tiếng Việt sát ngữ cảnh","context":"Exact sentence from transcript","timestamp":"${tsFormatHint}"}]}. Không thêm lời dẫn hoặc Markdown bao ngoài.
 
 Tiêu đề video: ${videoData.title || ''}
 Kênh: ${videoData.channelName || ''}
-Ngày đăng: ${videoData.publishDate || ''}
-Phụ đề có mốc thời gian (đã lấy mẫu đều từ đầu, giữa và cuối nếu quá dài):
-${transcript}`;
+Phụ đề đã đóng khung của đợt ${chunkIndex + 1}/${totalChunks}:
+${chunkText}`;
+}
+
+/**
+ * Điều phối tóm tắt & trích xuất từ vựng thích ứng từ vài giây đến 12 giờ:
+ * - Chế độ học 3 tầng (Dễ hiểu / Trung bình / Chuyên sâu) + phân bổ ngân sách từ vựng đầu–giữa–cuối.
+ * - Bảo toàn kết quả từng phần, dừng an toàn khi chạm giới hạn 429/lỗi liên tiếp và báo cáo trung thực tiến độ.
+ */
+async function summarizeYoutubeVideoSmart(videoData, summaryLevel, apiKey, onProgress, onPartialResult = null) {
+  const mode = normalizeYoutubeSummaryMode(summaryLevel, 'simple');
+  const isMetadataOnly = Boolean(videoData?.missingCCWarning);
+
+  const chunking = isMetadataOnly
+    ? {
+        totalDurationSec: Math.max(0, Number(videoData?.durationSeconds) || 0),
+        coveredDurationSec: 0,
+        isPartialTranscript: false,
+        useHoursFormat: (Number(videoData?.durationSeconds) || 0) >= 3600,
+        usedChapters: false,
+        chunks: [{
+          index: 0,
+          startSec: 0,
+          endSec: Math.max(0, Number(videoData?.durationSeconds) || 0),
+          startLabel: '00:00',
+          endLabel: formatYoutubeSeconds(Number(videoData?.durationSeconds) || 0, (Number(videoData?.durationSeconds) || 0) >= 3600),
+          slots: [],
+          text: String(videoData?.transcript || '').trim()
+        }]
+      }
+    : splitYoutubeTranscriptIntoTimeChunks(
+        videoData.transcript,
+        videoData.durationSeconds || 0,
+        mode,
+        videoData.chapters || []
+      );
+
+  const {
+    totalDurationSec,
+    coveredDurationSec,
+    isPartialTranscript,
+    isSampledTranscript = false,
+    sampledSlotCount = 0,
+    coalescedSampledCount = 0,
+    compactedChapterSlotCount = 0,
+    useHoursFormat,
+    usedChapters,
+    chunks
+  } = chunking;
+
+  if (!chunks.length || !chunks[0].text) {
+    throw new Error('Không có nội dung phụ đề hoặc mô tả hợp lệ để tóm tắt.');
+  }
+
+  const totalChunks = chunks.length;
+  const vocabPlan = computeAdaptiveYoutubeVocabPlan(
+    { ...videoData, coveredDurationSec },
+    chunks,
+    mode
+  );
+
+  const summarySections = [];
+  const chunkKeywordBuckets = Array.from({ length: totalChunks }, () => []);
+  let resolvedTitle = videoData.title || 'Video YouTube';
+  let completedChunks = 0;
+  let failedChunks = 0;
+  let consecutiveFailures = 0;
+  let stoppedReason = '';
+  let lastChunkError = null;
+
+  for (let i = 0; i < totalChunks; i += 1) {
+    const chunk = chunks[i];
+    const rangeText = `${chunk.startLabel} - ${chunk.endLabel}`;
+    const budget = vocabPlan.chunkBudgets[i] || { min: 0, max: 8, allowEmpty: true };
+
+    try {
+      const chunkResult = await callYouTubeGeminiWithFallback(
+        buildYoutubeSummaryPrompt(videoData, mode, {
+          chunkIndex: i,
+          totalChunks,
+          startLabel: chunk.startLabel,
+          endLabel: chunk.endLabel,
+          slots: chunk.slots || [],
+          totalDurationSec,
+          useHoursFormat,
+          chunkText: chunk.text,
+          vocabMin: budget.min,
+          vocabMax: budget.max,
+          allowEmptyVocab: budget.allowEmpty,
+          isMetadataOnly
+        }),
+        apiKey,
+        (modelName) => {
+          if (typeof onProgress === 'function') {
+            if (isMetadataOnly) {
+              onProgress(`Chỉ có tiêu đề & mô tả (thiếu phụ đề) — Đang tổng hợp bằng ${modelName}...`);
+              return;
+            }
+            const chapterHint = usedChapters ? ' (theo Chapter gốc)' : '';
+            onProgress(
+              totalChunks === 1
+                ? `Đang phân tích bài học (${rangeText})${chapterHint} bằng ${modelName}...`
+                : `Đang phân tích đợt ${i + 1}/${totalChunks} (${rangeText})${chapterHint} bằng ${modelName}...`
+            );
+          }
+        },
+        { maxOutputTokens: 16384, timeoutMs: 60000 }
+      );
+
+      if (i === 0 && chunkResult.title) {
+        resolvedTitle = chunkResult.title;
+      }
+
+      if (chunkResult.summary) {
+        summarySections.push(chunkResult.summary.trim());
+      }
+
+      if (Array.isArray(chunkResult.keywords)) {
+        chunkKeywordBuckets[i] = chunkResult.keywords;
+      }
+
+      completedChunks += 1;
+      consecutiveFailures = 0;
+
+      // Hiển thị cuốn chiếu ngay sau khi xong từng đợt (khi có từ 2 đợt trở lên)
+      if (totalChunks > 1 && i < totalChunks - 1 && typeof onPartialResult === 'function') {
+        onPartialResult({
+          title: resolvedTitle,
+          summary: summarySections.join('\n'),
+          keywords: selectBalancedYoutubeKeywords(chunkKeywordBuckets, vocabPlan.aggregateCap),
+          usedChapters,
+          summaryMode: mode,
+          completionStatus: 'in_progress',
+          completedChunks,
+          failedChunks,
+          totalChunks
+        });
+      }
+    } catch (chunkErr) {
+      lastChunkError = chunkErr;
+      failedChunks += 1;
+      consecutiveFailures += 1;
+      console.warn(`[YouTube Batch ${i + 1}/${totalChunks}] Lỗi:`, chunkErr);
+      summarySections.push(
+        `[${chunk.startLabel} - ${chunk.endLabel}] (Chưa xử lý được đợt ${i + 1}/${totalChunks} do gián đoạn API: ${chunkErr.message})`
+      );
+
+      // Dừng an toàn nếu chạm giới hạn Quota 429 hoặc đứt mạng 2 đợt liên tiếp để bảo vệ tài nguyên & kết quả đã xong
+      if (chunkErr?.isQuotaError || consecutiveFailures >= 2) {
+        stoppedReason = chunkErr?.isQuotaError ? 'quota_limit' : 'consecutive_errors';
+        const skipped = totalChunks - i - 1;
+        if (skipped > 0) {
+          failedChunks += skipped;
+          const nextUnprocessed = chunks[i + 1];
+          const finalChunk = chunks[totalChunks - 1];
+          summarySections.push(
+            `[${nextUnprocessed.startLabel} - ${finalChunk.endLabel}] (Tạm dừng ${skipped} đợt còn lại để bảo vệ hạn mức API sau lỗi liên tiếp; dữ liệu các phần trước đã được giữ lại.)`
+          );
+        }
+        break;
+      }
+    }
+  }
+
+  if (completedChunks === 0) {
+    throw lastChunkError || new Error('Không thể tóm tắt bất kỳ phần nào của video do lỗi API.');
+  }
+
+  const upstreamIncomplete = Boolean(videoData?.incompleteCoverage || isPartialTranscript);
+  const partialReason =
+    failedChunks > 0 ? 'failed_requests' : upstreamIncomplete ? 'incomplete_transcript' : '';
+  const completionStatus =
+    isMetadataOnly
+      ? 'metadata_only'
+      : failedChunks > 0 || upstreamIncomplete
+        ? 'partial'
+        : isSampledTranscript
+          ? 'sampled'
+          : 'complete';
+
+  return {
+    title: resolvedTitle,
+    summary: summarySections.join('\n'),
+    keywords: selectBalancedYoutubeKeywords(chunkKeywordBuckets, vocabPlan.aggregateCap),
+    usedChapters,
+    summaryMode: mode,
+    completionStatus,
+    partialReason,
+    isPartialTranscript: Boolean(isPartialTranscript),
+    isSampledTranscript: Boolean(isSampledTranscript),
+    sampledSlotCount,
+    coalescedSampledCount,
+    compactedChapterSlotCount,
+    completedChunks,
+    failedChunks,
+    totalChunks,
+    coveredDurationSec,
+    totalDurationSec,
+    stoppedReason,
+    vocabPlan: {
+      videoMin: vocabPlan.videoMin,
+      videoMax: vocabPlan.videoMax,
+      aggregateCap: vocabPlan.aggregateCap
+    }
+  };
+}
+
+/**
+ * Ý tưởng 2: Phân tích chi tiết theo yêu cầu (On-demand Drill-Down) cho đúng 1 chặng [startSec - endSec]
+ * từ transcript đã cache — tiết kiệm 70-85% token trên video dài 1-9 tiếng.
+ */
+async function summarizeYoutubeSegmentDrilldown(videoId, startSec, endSec, apiKey, onStatus) {
+  const cached = ytTranscriptSessionCache.get(videoId);
+  if (!cached || !cached.transcript) {
+    throw new Error('Không tìm thấy phụ đề trong bộ nhớ phiên. Hãy bấm "Tóm tắt Video đang xem" lại trước.');
+  }
+
+  const parsedLines = parseYoutubeTranscriptLines(cached.transcript);
+  const useHoursFormat = (cached.durationSeconds || endSec) >= 3600;
+  const sliceLines = parsedLines.filter((item) => item.seconds >= Math.max(0, startSec - 10) && item.seconds <= endSec + 5);
+  if (!sliceLines.length) {
+    throw new Error('Không có lời thoại phụ đề trong khoảng thời gian này.');
+  }
+
+  const spanSec = Math.max(60, endSec - startSec);
+  const subSlotSec = spanSec >= 30 * 60 ? 5 * 60 : spanSec >= 12 * 60 ? 3 * 60 : Math.max(60, Math.ceil(spanSec / 3));
+  const subSlots = [];
+  let cursor = startSec;
+  while (cursor < endSec) {
+    let nextEnd = Math.min(endSec, cursor + subSlotSec);
+    if (endSec - nextEnd > 0 && endSec - nextEnd < Math.max(45, subSlotSec * 0.35)) {
+      nextEnd = endSec;
+    }
+    const subLines = sliceLines.filter((item) => item.seconds >= cursor && item.seconds <= nextEnd);
+    const subText = compactYoutubeTranscriptLines(subLines, 15, useHoursFormat);
+    const sLbl = formatYoutubeSeconds(cursor, useHoursFormat);
+    const eLbl = formatYoutubeSeconds(nextEnd, useHoursFormat);
+    subSlots.push({
+      startSec: cursor,
+      endSec: nextEnd,
+      startLabel: sLbl,
+      endLabel: eLbl,
+      framedText: `=== [${sLbl} - ${eLbl}] ===\n${subText || '(Đoạn chuyển tiếp ngắn)'}`
+    });
+    if (nextEnd >= endSec) break;
+    cursor = nextEnd;
+  }
+
+  const rangeStartLbl = formatYoutubeSeconds(startSec, useHoursFormat);
+  const rangeEndLbl = formatYoutubeSeconds(endSec, useHoursFormat);
+  const prompt = buildYoutubeSummaryPrompt(cached, 'detailed', {
+    chunkIndex: 0,
+    totalChunks: 1,
+    startLabel: rangeStartLbl,
+    endLabel: rangeEndLbl,
+    slots: subSlots.map(({ framedText, ...meta }) => meta),
+    totalDurationSec: cached.durationSeconds || endSec,
+    useHoursFormat,
+    chunkText: subSlots.map((s) => s.framedText).join('\n\n'),
+    vocabMin: 2,
+    vocabMax: 6,
+    allowEmptyVocab: true
+  });
+
+  return callYouTubeGeminiWithFallback(
+    prompt,
+    apiKey,
+    (modelName) => {
+      if (typeof onStatus === 'function') {
+        onStatus(`Đang phân tích sâu ${rangeStartLbl} - ${rangeEndLbl} bằng ${modelName}...`);
+      }
+    },
+    { maxOutputTokens: 8192, timeoutMs: 60000 }
+  );
 }
 
 function parseYoutubeTimestamp(timestamp) {
-  const parts = String(timestamp || '').split(':').map(Number);
+  const parts = String(timestamp || '').trim().split(':').map(Number);
   if ((parts.length !== 2 && parts.length !== 3) || parts.some((part) => !Number.isInteger(part) || part < 0)) {
     return null;
   }
-  return parts.length === 3
-    ? parts[0] * 3600 + parts[1] * 60 + parts[2]
-    : parts[0] * 60 + parts[1];
+  if (parts.length === 3) {
+    if (parts[1] >= 60 || parts[2] >= 60) return null;
+    return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  }
+  if (parts[1] >= 60) return null;
+  return parts[0] * 60 + parts[1];
 }
 
 function isYoutubeUrl(urlString) {
@@ -5040,7 +6430,7 @@ async function saveYoutubeSummaryToHistory(data) {
 }
 
 function appendYoutubeInlineContent(parent, text, videoUrl) {
-  const tokenPattern = /\*\*([\s\S]+?)\*\*|\[(\d{1,3}:\d{2}(?::\d{2})?)\]/g;
+  const tokenPattern = /\*\*([\s\S]+?)\*\*|\[(\d{1,3}:\d{2}(?::\d{2})?)(?:\s*[-–—]\s*(\d{1,3}:\d{2}(?::\d{2})?))?\]/g;
   let cursor = 0;
   let match;
   const appendText = (value) => {
@@ -5056,15 +6446,18 @@ function appendYoutubeInlineContent(parent, text, videoUrl) {
       parent.appendChild(strong);
     } else {
       const timestampButton = document.createElement('button');
-      const timestamp = match[2];
+      const startTimestamp = match[2];
+      const endTimestamp = match[3] || '';
       timestampButton.type = 'button';
       timestampButton.className = 'yt-timestamp-btn';
-      timestampButton.textContent = timestamp;
-      timestampButton.title = `Tua video đến ${timestamp}`;
+      timestampButton.textContent = endTimestamp ? `${startTimestamp} - ${endTimestamp}` : startTimestamp;
+      timestampButton.title = endTimestamp
+        ? `Tua video đến đầu khung ${startTimestamp} (khung ${startTimestamp} - ${endTimestamp})`
+        : `Tua video đến ${startTimestamp}`;
       timestampButton.addEventListener('click', async () => {
         try {
-          await seekYoutubeVideo(videoUrl, timestamp);
-          setMascotStatus(`Đã tua video đến ${timestamp}.`, 'idle');
+          await seekYoutubeVideo(videoUrl, startTimestamp);
+          setMascotStatus(`Đã tua video đến ${startTimestamp}.`, 'idle');
         } catch (error) {
           setMascotStatus(error.message, 'error');
         }
@@ -5084,9 +6477,17 @@ function renderYoutubeSummaryResult(data) {
     .replace(/^\s*#{1,6}\s*/, '')
     .replace(/\*/g, '')
     .trim();
-  const summary = typeof data?.summary === 'string' ? data.summary : '';
+  const summary = Array.isArray(data?.summary)
+    ? data.summary.map((s) => String(s || '').trim()).filter(Boolean).join('\n')
+    : typeof data?.summary === 'string'
+      ? data.summary
+      : '';
   const videoUrl = typeof data?.videoUrl === 'string' ? data.videoUrl : '';
-  const summaryLines = summary.split(/\r?\n/)
+  const activeVideoId = getYoutubeVideoId(videoUrl);
+  const hasCachedTranscript = Boolean(activeVideoId && ytTranscriptSessionCache.has(activeVideoId));
+  const summaryLines = summary
+    .replace(/([^\n])\s+(\[\d{1,3}:\d{2}(?::\d{2})?(?:\s*[-–—]\s*\d{1,3}:\d{2}(?::\d{2})?)?\])/g, '$1\n$2')
+    .split(/\r?\n/)
     .map((line) => line
       .replace(/^\s*#{1,6}\s*/, '')
       .replace(/^\s*(?:\*\s+|-\s+|•\s*)/, '')
@@ -5104,31 +6505,341 @@ function renderYoutubeSummaryResult(data) {
     const ccWarningBanner = document.createElement('div');
     ccWarningBanner.className = 'yt-missing-cc-banner';
     ccWarningBanner.setAttribute('role', 'status');
-    ccWarningBanner.style.cssText =
-      'margin: 8px 0 10px; padding: 9px 12px; border-radius: 10px; background: #fffbeb; border: 1px solid #f59e0b; color: #92400e; font-size: 0.84rem; line-height: 1.45; font-weight: 500;';
     ccWarningBanner.textContent =
-      '⚠️ Video này chưa bật phụ đề CC — AI đang tóm tắt dựa trên tiêu đề và mô tả video.';
+      '⚠️ Không lấy được phụ đề đầy đủ — Nội dung dưới đây chỉ tổng hợp từ tiêu đề và phần mô tả hiện có của video (chưa phân tích toàn bộ lời thoại).';
     ytResult.appendChild(ccWarningBanner);
+  } else if (data?.incompleteCoverage || data?.completionStatus === 'partial' || data?.completionStatus === 'in_progress') {
+    const partialBanner = document.createElement('div');
+    partialBanner.className = 'yt-missing-cc-banner';
+    partialBanner.setAttribute('role', 'status');
+    if (data?.completionStatus === 'in_progress' && Number(data?.totalChunks) > 1) {
+      partialBanner.textContent =
+        `⏳ Đang xử lý cuốn chiếu: đã hoàn thành ${data.completedChunks || 0}/${data.totalChunks} phần video...`;
+    } else if (Number(data?.failedChunks) > 0 && Number(data?.totalChunks) > 0) {
+      partialBanner.textContent =
+        `⚠️ Đã xử lý thành công ${data.completedChunks || 0}/${data.totalChunks} phần (${data.failedChunks} phần bị gián đoạn API); các phần đã xong được giữ nguyên bên dưới.`;
+    } else if (data?.incompleteCoverageNote) {
+      partialBanner.textContent = `⚠️ ${data.incompleteCoverageNote}`;
+    } else {
+      partialBanner.textContent =
+        '⚠️ Phụ đề thu thập được chỉ bao phủ một phần video; bản tóm tắt chỉ phản ánh đúng phần lời thoại hiện có.';
+    }
+    ytResult.appendChild(partialBanner);
+  } else if (data?.completionStatus === 'sampled' || data?.isSampledTranscript) {
+    const sampledBanner = document.createElement('div');
+    sampledBanner.className = 'yt-missing-cc-banner';
+    sampledBanner.setAttribute('role', 'status');
+    const chapterNote =
+      Number(data?.compactedChapterSlotCount) > 0
+        ? ' (đồng thời gộp gọn các mốc chương dày đặc theo thứ tự thời gian)'
+        : '';
+    sampledBanner.textContent =
+      `ℹ️ Phân tích theo mẫu đại diện có kiểm soát: Do phụ đề video rất dài/dày đặc, hệ thống đã lấy mẫu đại diện đầu–giữa–cuối trên các phân đoạn quá tải để bảo đảm giới hạn token${chapterNote} — không mạo nhận đã phân tích nguyên văn từng câu. Bạn có thể bấm "🔍 Chi tiết đoạn này" để phân tích sâu nguyên văn từng khung.`;
+    ytResult.appendChild(sampledBanner);
   }
 
   const summaryBox = document.createElement('section');
   summaryBox.className = 'quiz-summary-box';
   const summaryHeading = document.createElement('div');
   summaryHeading.className = 'quiz-summary-title';
-  summaryHeading.textContent = '📌 Tóm tắt video';
+  summaryHeading.textContent = data?.usedChapters
+    ? '📌 Tóm tắt video (theo Chapter gốc)'
+    : '📌 Tóm tắt video';
   const summaryContent = document.createElement('div');
   summaryContent.className = 'quiz-summary-content';
+
   summaryLines.forEach((line) => {
+    const lineWrap = document.createElement('div');
+    lineWrap.className = 'yt-summary-line-wrap';
     const lineElement = document.createElement('p');
     lineElement.className = 'yt-summary-line';
     appendYoutubeInlineContent(lineElement, line, videoUrl);
-    summaryContent.appendChild(lineElement);
+    lineWrap.appendChild(lineElement);
+
+    // Ý tưởng 2: Nút "🔍 Chi tiết đoạn này" cho mọi khung giờ >= 3 phút khi đã có transcript cache
+    const rangeMatch = line.match(/^\[(\d{1,3}:\d{2}(?::\d{2})?)\s*[-–—]\s*(\d{1,3}:\d{2}(?::\d{2})?)\]/);
+    if (rangeMatch && hasCachedTranscript) {
+      const startSec = parseYoutubeTimestamp(rangeMatch[1]);
+      const endSec = parseYoutubeTimestamp(rangeMatch[2]);
+      if (startSec !== null && endSec !== null && endSec - startSec >= 180) {
+        const drillBtn = document.createElement('button');
+        drillBtn.type = 'button';
+        drillBtn.className = 'yt-drilldown-btn';
+        drillBtn.textContent = '🔍 Chi tiết đoạn này';
+
+        const drillPanel = document.createElement('div');
+        drillPanel.className = 'yt-drilldown-panel';
+        drillPanel.hidden = true;
+        let loaded = false;
+
+        drillBtn.addEventListener('click', async () => {
+          if (loaded) {
+            drillPanel.hidden = !drillPanel.hidden;
+            drillBtn.textContent = drillPanel.hidden ? '🔍 Chi tiết đoạn này' : '▲ Thu gọn chi tiết';
+            return;
+          }
+          const { geminiApiKey } = await chrome.storage.local.get('geminiApiKey');
+          if (!geminiApiKey) {
+            setMascotStatus('Vui lòng nhập Gemini API Key trong Cài đặt trước.', 'error');
+            return;
+          }
+          drillBtn.disabled = true;
+          drillBtn.textContent = '⏳ Đang phân tích sâu...';
+          try {
+            const detailRes = await summarizeYoutubeSegmentDrilldown(
+              activeVideoId,
+              startSec,
+              endSec,
+              geminiApiKey,
+              (msg) => setMascotStatus(msg, 'loading')
+            );
+            const subLines = String(detailRes.summary || '')
+              .replace(/([^\n])\s+(\[\d{1,3}:\d{2}(?::\d{2})?(?:\s*[-–—]\s*\d{1,3}:\d{2}(?::\d{2})?)?\])/g, '$1\n$2')
+              .split(/\r?\n/)
+              .map((l) => l.replace(/^\s*(?:\*\s+|-\s+|•\s*)/, '').trim())
+              .filter(Boolean);
+            drillPanel.replaceChildren();
+            subLines.forEach((subLine) => {
+              const p = document.createElement('p');
+              p.className = 'yt-summary-line';
+              appendYoutubeInlineContent(p, subLine, videoUrl);
+              drillPanel.appendChild(p);
+            });
+            loaded = true;
+            drillPanel.hidden = false;
+            drillBtn.textContent = '▲ Thu gọn chi tiết';
+            setMascotStatus(`Đã phân tích chi tiết khung ${rangeMatch[1]} - ${rangeMatch[2]}.`, 'idle');
+          } catch (err) {
+            setMascotStatus(`Không thể phân tích chi tiết đoạn này: ${err.message}`, 'error');
+            drillBtn.textContent = '🔍 Thử lại chi tiết đoạn này';
+          } finally {
+            drillBtn.disabled = false;
+          }
+        });
+
+        lineWrap.append(drillBtn, drillPanel);
+      }
+    }
+
+    summaryContent.appendChild(lineWrap);
   });
   const note = document.createElement('small');
   note.className = 'yt-summary-note';
   note.textContent = 'Lưu ý: Phụ đề tự động có thể sai lệch nhỏ về thuật ngữ chuyên ngành.';
   summaryBox.append(summaryHeading, summaryContent, note);
   ytResult.appendChild(summaryBox);
+
+  // --- Mảnh ghép 1 & 2: Hỏi gia sư theo ngữ cảnh Video + Tạo Quiz kiểm tra hiểu bài đa môn ---
+  const tutorBox = document.createElement('section');
+  tutorBox.className = 'quiz-summary-box yt-tutor-box';
+
+  const tutorHeading = document.createElement('div');
+  tutorHeading.className = 'quiz-summary-title';
+  tutorHeading.textContent = '💬 Hỏi gia sư về video này';
+
+  const quickChipsRow = document.createElement('div');
+  quickChipsRow.className = 'yt-tutor-chips';
+
+  const tutorInputRow = document.createElement('div');
+  tutorInputRow.className = 'yt-tutor-input-row';
+  const tutorInput = document.createElement('input');
+  tutorInput.type = 'text';
+  tutorInput.className = 'wf-input yt-tutor-input';
+  tutorInput.placeholder = 'Hỏi chỗ còn mơ hồ (VD: giải thích dễ hiểu hơn, cho ví dụ code...)';
+  tutorInput.setAttribute('aria-label', 'Câu hỏi cho gia sư AI về video');
+  const tutorSendBtn = document.createElement('button');
+  tutorSendBtn.type = 'button';
+  tutorSendBtn.className = 'action-btn primary-action yt-tutor-send-btn';
+  tutorSendBtn.textContent = 'Hỏi AI';
+  tutorInputRow.append(tutorInput, tutorSendBtn);
+
+  const tutorAnswerEl = document.createElement('div');
+  tutorAnswerEl.className = 'yt-tutor-answer';
+  tutorAnswerEl.hidden = true;
+
+  const getVideoContextTranscript = () => {
+    const cached = activeVideoId ? ytTranscriptSessionCache.get(activeVideoId) : null;
+    return String(cached?.transcript || data?.transcript || summary || '').trim();
+  };
+
+  const askYoutubeTutor = async (questionText, focusCurrentMoment = false) => {
+    const cleanQ = String(questionText || '').trim();
+    if (!cleanQ) return;
+    const { geminiApiKey } = await chrome.storage.local.get('geminiApiKey');
+    if (!geminiApiKey) {
+      setMascotStatus('Vui lòng nhập Gemini API Key trong Cài đặt trước.', 'error');
+      return;
+    }
+
+    tutorSendBtn.disabled = true;
+    quickChipsRow.querySelectorAll('button').forEach((b) => { b.disabled = true; });
+    tutorAnswerEl.hidden = false;
+    tutorAnswerEl.textContent = '⏳ Gia sư AI đang phân tích nội dung video...';
+
+    try {
+      let contextText = getVideoContextTranscript();
+      let momentHint = '';
+
+      if (focusCurrentMoment) {
+        try {
+          const liveMeta = await getActiveYoutubeMetadata();
+          const curSec = Number(liveMeta?.currentSeconds) || 0;
+          const lines = parseYoutubeTranscriptLines(contextText);
+          if (lines.length > 0 && curSec > 0) {
+            const around = lines.filter((l) => l.seconds >= Math.max(0, curSec - 120) && l.seconds <= curSec + 120);
+            if (around.length > 0) {
+              const lbl = formatYoutubeSeconds(curSec, curSec >= 3600);
+              momentHint = `Người học đang dừng ở mốc [${lbl}]. Hãy tập trung giải thích thật dễ hiểu đoạn quanh mốc [${lbl}] này.`;
+              contextText = compactYoutubeTranscriptLines(around, 15, curSec >= 3600);
+            }
+          }
+        } catch (_) {
+          // Dùng toàn bộ ngữ cảnh nếu không đọc được vị trí hiện tại
+        }
+      }
+
+      const safeContext = contextText.length > 24000 ? `${contextText.slice(0, 14000)}\n...\n${contextText.slice(-10000)}` : contextText;
+      const tutorPrompt = `Bạn là gia sư AI giảng bài siêu dễ hiểu cho sinh viên đại học (mọi môn: lập trình Python/Code, Toán, Kinh tế, Khoa học, Tiếng Anh...).
+Trả lời bằng tiếng Việt tự nhiên, trực diện, dễ hình dung, có ví dụ thực tế (hoặc đoạn code ngắn rõ ràng nếu là video lập trình).
+Nếu nhắc tới nội dung trong video, hãy kèm mốc thời gian dạng [MM:SS] hoặc [HH:MM:SS] lấy từ phụ đề.
+Chỉ trả về JSON hợp lệ dạng {"title":"Trả lời gia sư","summary":"Nội dung trả lời rõ ràng từng dòng ngăn cách bằng \\n","keywords":[]}. Không thêm lời dẫn.
+
+Tiêu đề video: ${title}
+${momentHint}
+Câu hỏi của sinh viên: ${cleanQ}
+Ngữ cảnh phụ đề/tóm tắt video:
+${safeContext}`;
+
+      const res = await callYouTubeGeminiWithFallback(
+        tutorPrompt,
+        geminiApiKey,
+        (modelName) => setMascotStatus(`Gia sư ${modelName} đang trả lời câu hỏi của bạn...`, 'loading'),
+        { maxOutputTokens: 4096, timeoutMs: 45000 }
+      );
+
+      tutorAnswerEl.replaceChildren();
+      const answerLines = String(res.summary || '')
+        .split(/\r?\n/)
+        .map((l) => l.trim())
+        .filter(Boolean);
+      answerLines.forEach((ansLine) => {
+        const p = document.createElement('p');
+        p.className = 'yt-summary-line';
+        appendYoutubeInlineContent(p, ansLine, videoUrl);
+        tutorAnswerEl.appendChild(p);
+      });
+      setMascotStatus('Gia sư AI đã giải đáp xong!', 'idle');
+    } catch (err) {
+      tutorAnswerEl.textContent = `Không thể trả lời lúc này: ${err.message}`;
+      setMascotStatus(`Lỗi gia sư AI: ${err.message}`, 'error');
+    } finally {
+      tutorSendBtn.disabled = false;
+      quickChipsRow.querySelectorAll('button').forEach((b) => { b.disabled = false; });
+    }
+  };
+
+  const quickPrompts = [
+    { label: 'Giải thích đoạn đang xem', q: 'Giải thích thật nôm na, dễ hiểu đoạn video tôi đang xem đang muốn nói điều gì và tại sao nó quan trọng?', focusMoment: true },
+    { label: 'Ví dụ / Code minh họa', q: 'Cho tôi 1–2 ví dụ thực tế (hoặc ví dụ code dễ hiểu nếu là bài lập trình) để nắm chắc bản chất bài giảng này.', focusMoment: false },
+    { label: 'Cheat Sheet dễ nhớ', q: 'Tóm gọn toàn bộ kiến thức cốt lõi của video thành bảng Cheat Sheet siêu ngắn gọn (Khái niệm • Công dụng • Lưu ý hay thi).', focusMoment: false }
+  ];
+
+  quickPrompts.forEach((chipCfg) => {
+    const chipBtn = document.createElement('button');
+    chipBtn.type = 'button';
+    chipBtn.className = 'yt-drilldown-btn yt-tutor-chip';
+    chipBtn.textContent = chipCfg.label;
+    chipBtn.addEventListener('click', () => {
+      askYoutubeTutor(chipCfg.q, chipCfg.focusMoment);
+    });
+    quickChipsRow.appendChild(chipBtn);
+  });
+
+  tutorSendBtn.addEventListener('click', () => {
+    const q = tutorInput.value.trim();
+    if (!q) {
+      tutorInput.focus();
+      return;
+    }
+    askYoutubeTutor(q, false);
+  });
+  tutorInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      tutorSendBtn.click();
+    }
+  });
+
+  // Nút Tạo Quiz kiểm tra hiểu bài đa môn (Python, Toán, Kinh tế, Tiếng Anh...) từ Video đang xem
+  const videoQuizBtn = document.createElement('button');
+  videoQuizBtn.type = 'button';
+  videoQuizBtn.className = 'action-btn web-action yt-video-quiz-btn';
+  videoQuizBtn.textContent = '⚡ Tạo Quiz kiểm tra hiểu bài từ Video này';
+  videoQuizBtn.addEventListener('click', async () => {
+    const { geminiApiKey } = await chrome.storage.local.get('geminiApiKey');
+    if (!geminiApiKey) {
+      setMascotStatus('Vui lòng nhập Gemini API Key trong Cài đặt trước.', 'error');
+      return;
+    }
+    videoQuizBtn.disabled = true;
+    const origText = videoQuizBtn.textContent;
+    videoQuizBtn.textContent = '⏳ Đang tạo 6 câu hỏi kiểm tra hiểu bài...';
+    setMascotStatus('Đang tạo bộ câu hỏi kiểm tra hiểu bài từ video...', 'loading');
+
+    try {
+      const srcText = getVideoContextTranscript();
+      const safeSrc = srcText.length > 24000 ? `${srcText.slice(0, 14000)}\n...\n${srcText.slice(-10000)}` : srcText;
+      const quizPrompt = `Bạn là giảng viên đại học. Dựa vào nội dung video "${title}", hãy tạo ĐÚNG 6 câu hỏi trắc nghiệm tiếng Việt (4 đáp án A, B, C, D) để kiểm tra mức độ hiểu bản chất bài học (không hỏi lan man).
+Mỗi câu có explanation ngắn gọn nêu rõ vì sao đúng và kèm mốc thời gian [MM:SS] liên quan nếu có.
+Chỉ trả về JSON hợp lệ theo cấu trúc:
+{"title":"Quiz: ${title.replace(/"/g, '')}","summary":"ok","keywords":[{"question":"Nội dung câu hỏi?","options":["A. ...","B. ...","C. ...","D. ..."],"answer":"A","explanation":"Giải thích ngắn gọn..."}]}
+Lưu ý: đặt mảng 6 câu hỏi vào trường "keywords" để đúng schema JSON.
+
+Nội dung video:
+${safeSrc}`;
+
+      const res = await callYouTubeGeminiWithFallback(
+        quizPrompt,
+        geminiApiKey,
+        (modelName) => setMascotStatus(`Đang tạo Quiz từ video bằng ${modelName}...`, 'loading'),
+        { maxOutputTokens: 6144, timeoutMs: 50000 }
+      );
+
+      const generatedQuiz = (Array.isArray(res.keywords) ? res.keywords : []).filter(
+        (q) => q && typeof q.question === 'string' && Array.isArray(q.options) && q.options.length >= 2
+      );
+      if (!generatedQuiz.length) {
+        throw new Error('AI chưa tạo được danh sách câu hỏi hợp lệ, hãy thử lại.');
+      }
+
+      await chrome.storage.local.set({
+        activePracticeSession: {
+          title: `Quiz Video: ${title}`,
+          summary,
+          quiz: generatedQuiz,
+          quiz_type: 'standard',
+          source_type: 'youtube',
+          videoId: activeVideoId,
+          videoTitle: title,
+          videoUrl,
+          mode: 'quiz',
+          createdAt: Date.now()
+        }
+      });
+      setMascotStatus(`Đã tạo ${generatedQuiz.length} câu Quiz! Đang mở Phòng luyện tập...`, 'idle');
+      setTimeout(() => {
+        chrome.tabs.create({ url: chrome.runtime.getURL('practice.html'), active: true }).catch(() => {});
+      }, 200);
+    } catch (err) {
+      setMascotStatus(`Không thể tạo Quiz từ video: ${err.message}`, 'error');
+    } finally {
+      videoQuizBtn.disabled = false;
+      videoQuizBtn.textContent = origText;
+    }
+  });
+
+  tutorBox.append(tutorHeading, quickChipsRow, tutorInputRow, tutorAnswerEl, videoQuizBtn);
+  ytResult.appendChild(tutorBox);
 
   const keywordBox = document.createElement('section');
   keywordBox.className = 'quiz-summary-box';
@@ -5138,7 +6849,10 @@ function renderYoutubeSummaryResult(data) {
   const keywordList = document.createElement('div');
   keywordList.className = 'web-keyword-list';
   const validKeywords = keywords.filter((item) =>
-    typeof item?.term === 'string' && item.term.trim()
+    typeof item?.term === 'string' &&
+    item.term.trim() &&
+    typeof item?.meaning === 'string' &&
+    item.meaning.trim()
   );
   validKeywords.forEach((item) => {
     const term = item.term.trim();
@@ -5241,6 +6955,10 @@ function renderYoutubeSummaryResult(data) {
       return;
     }
     try {
+      const fullSourceTranscript =
+        (ytVideoId && ytTranscriptSessionCache.get(ytVideoId)?.transcript) ||
+        (typeof data?.transcript === 'string' ? data.transcript : '');
+      const transferTranscript = buildPracticeTransferTranscript(fullSourceTranscript, 42000);
       await chrome.storage.local.set({
         activePracticeSession: {
           title: `${title} — Từ khóa`,
@@ -5251,7 +6969,7 @@ function renderYoutubeSummaryResult(data) {
           videoId: ytVideoId,
           videoTitle: title,
           videoUrl,
-          transcript: typeof data?.transcript === 'string' ? data.transcript : '',
+          transcript: transferTranscript,
           mode: 'flashcard',
           createdAt: Date.now()
         }
@@ -5334,6 +7052,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const ytResult = document.getElementById('yt-result');
   const summaryLevel = document.getElementById('yt-summary-level');
 
+  if (summaryLevel) {
+    const initialMode = loadStoredYoutubeSummaryMode();
+    summaryLevel.value = initialMode;
+    summaryLevel.addEventListener('change', () => {
+      summaryLevel.value = saveYoutubeSummaryModePreference(summaryLevel.value);
+    });
+  }
+
   if (summarizeYtBtn && ytStatus && ytResult) summarizeYtBtn.addEventListener('click', async () => {
     summarizeYtBtn.disabled = true;
     ytStatus.hidden = false;
@@ -5356,20 +7082,376 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      // 2. Gắn content.js vào tab YouTube hiện tại và gửi message lấy dữ liệu
-      await chrome.scripting.executeScript({
-        target: { tabId: activeTab.id },
-        files: ['content.js']
-      });
+      const activeVideoId = getYoutubeVideoId(activeTab.url || '');
+      const cachedVideoEntry = activeVideoId ? ytTranscriptSessionCache.get(activeVideoId) : null;
 
-      const videoData = await chrome.tabs.sendMessage(activeTab.id, {
-        type: 'GET_YOUTUBE_DATA'
-      });
+      let videoData = null;
+      let mainWorldData = null;
+
+      if (cachedVideoEntry && cachedVideoEntry.transcript) {
+        ytStatus.textContent = 'Đang dùng phụ đề đã lưu sẵn cho video này...';
+        videoData = {
+          success: true,
+          title: cachedVideoEntry.title,
+          channelName: cachedVideoEntry.channelName,
+          publishDate: cachedVideoEntry.publishDate,
+          description: cachedVideoEntry.description,
+          videoUrl: activeTab.url,
+          currentSeconds: cachedVideoEntry.currentSeconds || 0,
+          durationSeconds: cachedVideoEntry.durationSeconds || 0,
+          transcript: cachedVideoEntry.transcript,
+          transcriptSource: cachedVideoEntry.transcriptSource || 'cache',
+          chapters: cachedVideoEntry.chapters || []
+        };
+      } else {
+        // 2. Đọc ytInitialPlayerResponse / movie_player, Chapter gốc & gọi youtubei/v1/get_transcript trực tiếp trong MAIN world
+        try {
+          const [mainExecResult] = await chrome.scripting.executeScript({
+            target: { tabId: activeTab.id },
+            world: 'MAIN',
+            func: async () => {
+              try {
+                const currentVideoId = new URLSearchParams(window.location.search).get('v') || '';
+                const player = document.getElementById('movie_player');
+                const liveResp = player && typeof player.getPlayerResponse === 'function' ? player.getPlayerResponse() : null;
+                const initResp = window.ytInitialPlayerResponse || null;
+
+                const pickResp =
+                  (liveResp?.videoDetails?.videoId === currentVideoId ? liveResp : null) ||
+                  (initResp?.videoDetails?.videoId === currentVideoId ? initResp : null) ||
+                  liveResp ||
+                  initResp;
+
+                const rawTracks = pickResp?.captions?.playerCaptionsTracklistRenderer?.captionTracks;
+                const captionTracks = Array.isArray(rawTracks)
+                  ? rawTracks
+                      .filter((t) => typeof t?.baseUrl === 'string' && t.baseUrl.length > 0)
+                      .map((t) => ({
+                        baseUrl: t.baseUrl,
+                        languageCode: t.languageCode || '',
+                        kind: t.kind || '',
+                        vssId: t.vssId || '',
+                        name:
+                          t.name?.simpleText ||
+                          (Array.isArray(t.name?.runs) ? t.name.runs.map((r) => String(r?.text || '')).join('').trim() : '')
+                      }))
+                  : [];
+
+                const defaultAudioLanguage =
+                  pickResp?.microformat?.playerMicroformatRenderer?.defaultAudioLanguage ||
+                  pickResp?.videoDetails?.defaultAudioLanguage ||
+                  '';
+
+                const lengthSeconds = Number(pickResp?.videoDetails?.lengthSeconds) || 0;
+                const formatSec = (sec) => {
+                  const s = Math.max(0, Math.floor(sec));
+                  const h = Math.floor(s / 3600);
+                  const m = Math.floor((s % 3600) / 60);
+                  const r = s % 60;
+                  if (h > 0 || lengthSeconds >= 3600) {
+                    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}`;
+                  }
+                  return `${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}`;
+                };
+
+                const flexyData = document.querySelector('ytd-watch-flexy')?.__data?.data || null;
+
+                // Trích xuất Chapter (Phân cảnh) gốc của YouTube từ chapterRenderer
+                const chapters = [];
+                try {
+                  const seenChapterMs = new Set();
+                  const collectChapters = (node, depth = 0) => {
+                    if (!node || typeof node !== 'object' || depth > 20) return;
+                    if (node.chapterRenderer) {
+                      const ch = node.chapterRenderer;
+                      const startMs = Number(ch.timeRangeStartMillis);
+                      const chTitle =
+                        ch.title?.simpleText ||
+                        (ch.title?.runs || []).map((r) => String(r?.text || '')).join('').trim();
+                      if (Number.isFinite(startMs) && startMs >= 0 && chTitle && !seenChapterMs.has(startMs)) {
+                        seenChapterMs.add(startMs);
+                        chapters.push({ startSec: Math.floor(startMs / 1000), title: chTitle });
+                      }
+                      return;
+                    }
+                    if (Array.isArray(node)) {
+                      for (const item of node) collectChapters(item, depth + 1);
+                    } else {
+                      for (const key of Object.keys(node)) collectChapters(node[key], depth + 1);
+                    }
+                  };
+                  collectChapters(flexyData?.playerOverlays || window.ytInitialData?.playerOverlays);
+                  if (!chapters.length) {
+                    collectChapters(flexyData?.engagementPanels || window.ytInitialData?.engagementPanels);
+                  }
+                } catch (_) {
+                  // Fallback phân tích chapter từ mô tả video
+                }
+
+                // Tìm getTranscriptEndpoint.params từ DOM/ytInitialData/HTML để gọi trực tiếp youtubei/v1/get_transcript
+                let innertubeTranscript = '';
+                try {
+                  const findTranscriptParams = (obj, depth = 0) => {
+                    if (!obj || typeof obj !== 'object' || depth > 24) return '';
+                    if (typeof obj.getTranscriptEndpoint?.params === 'string' && obj.getTranscriptEndpoint.params) {
+                      return obj.getTranscriptEndpoint.params;
+                    }
+                    if (Array.isArray(obj)) {
+                      for (const item of obj) {
+                        const found = findTranscriptParams(item, depth + 1);
+                        if (found) return found;
+                      }
+                    } else {
+                      for (const key of Object.keys(obj)) {
+                        const found = findTranscriptParams(obj[key], depth + 1);
+                        if (found) return found;
+                      }
+                    }
+                    return '';
+                  };
+
+                  let transcriptParams =
+                    findTranscriptParams(flexyData?.engagementPanels) ||
+                    findTranscriptParams(flexyData?.contents) ||
+                    findTranscriptParams(window.ytInitialData?.engagementPanels) ||
+                    findTranscriptParams(window.ytInitialData?.contents);
+
+                  if (!transcriptParams) {
+                    try {
+                      const htmlResp = await fetch(window.location.href, { credentials: 'include' });
+                      if (htmlResp.ok) {
+                        const htmlText = await htmlResp.text();
+                        const match = htmlText.match(/"getTranscriptEndpoint"\s*:\s*\{\s*"params"\s*:\s*"([^"]+)"/);
+                        if (match?.[1]) {
+                          transcriptParams = match[1];
+                        }
+                      }
+                    } catch (_) {
+                      // Bỏ qua nếu không fetch lại được HTML
+                    }
+                  }
+
+                  const apiKey = window.ytcfg?.get?.('INNERTUBE_API_KEY') || '';
+                  const context = window.ytcfg?.get?.('INNERTUBE_CONTEXT') || null;
+
+                  if (transcriptParams && apiKey && context) {
+                    const resp = await fetch(
+                      `https://www.youtube.com/youtubei/v1/get_transcript?key=${encodeURIComponent(apiKey)}`,
+                      {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ context, params: transcriptParams })
+                      }
+                    );
+                    if (resp.ok) {
+                      const data = await resp.json().catch(() => null);
+                      const lines = [];
+                      const collectSegments = (node, depth = 0) => {
+                        if (!node || typeof node !== 'object' || depth > 24) return;
+                        if (node.transcriptSegmentRenderer) {
+                          const renderer = node.transcriptSegmentRenderer;
+                          const text = (renderer.snippet?.runs || [])
+                            .map((r) => String(r?.text || ''))
+                            .join('')
+                            .replace(/\s+/g, ' ')
+                            .trim();
+                          if (text) {
+                            const startMs = Number(renderer.startMs);
+                            const tsLabel = Number.isFinite(startMs)
+                              ? formatSec(startMs / 1000)
+                              : String(renderer.startTimeText?.simpleText || '00:00').trim();
+                            lines.push(`[${tsLabel}] ${text}`);
+                          }
+                          return;
+                        }
+                        if (Array.isArray(node)) {
+                          for (const item of node) collectSegments(item, depth + 1);
+                        } else {
+                          for (const key of Object.keys(node)) collectSegments(node[key], depth + 1);
+                        }
+                      };
+                      collectSegments(data);
+                      if (lines.length > 0) {
+                        innertubeTranscript = lines.join('\n');
+                      }
+                    }
+                  }
+                } catch (_) {
+                  // Fallback sang timedtext / DOM transcript bên dưới
+                }
+
+                // Tầng 1B trong MAIN world: đọc live timedtext URL (đã có pot token hợp lệ từ trình phát YouTube)
+                let timedtextPerfTranscript = '';
+                let timedtextLang = '';
+                if (!innertubeTranscript) {
+                  try {
+                    const parseTimedtextBody = (bodyText) => {
+                      const trimmed = String(bodyText || '').trim();
+                      if (!trimmed) return '';
+                      if (trimmed.startsWith('{')) {
+                        const parsed = JSON.parse(trimmed);
+                        const events = Array.isArray(parsed?.events) ? parsed.events : [];
+                        const out = [];
+                        for (const ev of events) {
+                          if (!Array.isArray(ev?.segs)) continue;
+                          const text = ev.segs.map((s) => String(s?.utf8 || '')).join('').replace(/\s+/g, ' ').trim();
+                          if (!text) continue;
+                          out.push(`[${formatSec((Number(ev.tStartMs) || 0) / 1000)}] ${text}`);
+                        }
+                        if (out.length > 0) return out.join('\n');
+                      }
+                      if (trimmed.includes('<text') || trimmed.includes('<p ')) {
+                        const doc = new DOMParser().parseFromString(trimmed, 'text/xml');
+                        const out = [];
+                        const textNodes = Array.from(doc.querySelectorAll('text'));
+                        if (textNodes.length > 0) {
+                          for (const n of textNodes) {
+                            const txt = (n.textContent || '').replace(/\s+/g, ' ').trim();
+                            if (!txt) continue;
+                            out.push(`[${formatSec(parseFloat(n.getAttribute('start') || '0'))}] ${txt}`);
+                          }
+                        } else {
+                          const pNodes = Array.from(doc.querySelectorAll('p'));
+                          for (const n of pNodes) {
+                            const txt = (n.textContent || '').replace(/\s+/g, ' ').trim();
+                            if (!txt) continue;
+                            const tMs = parseFloat(n.getAttribute('t') || '0');
+                            out.push(`[${formatSec(tMs / 1000)}] ${txt}`);
+                          }
+                        }
+                        if (out.length > 0) return out.join('\n');
+                      }
+                      return '';
+                    };
+
+                    const entries = performance.getEntriesByType('resource') || [];
+                    const timedtextUrls = entries
+                      .map((e) => String(e?.name || ''))
+                      .filter((u) => u.includes('/api/timedtext') && (!currentVideoId || u.includes(currentVideoId)))
+                      .reverse();
+
+                    for (const liveUrl of timedtextUrls.slice(0, 4)) {
+                      const candidateUrls = [];
+                      // Nếu trình phát đang bật tự dịch (&tlang=...), ưu tiên lấy URL phụ đề gốc chưa dịch máy trước
+                      const untranslatedLiveUrl = liveUrl
+                        .replace(/([?&])tlang=[^&]+&?/gi, '$1')
+                        .replace(/[?&]$/, '');
+                      if (untranslatedLiveUrl !== liveUrl) {
+                        candidateUrls.push(
+                          untranslatedLiveUrl.includes('fmt=')
+                            ? untranslatedLiveUrl.replace(/fmt=[^&]+/, 'fmt=json3')
+                            : `${untranslatedLiveUrl}&fmt=json3`,
+                          untranslatedLiveUrl
+                        );
+                      }
+                      candidateUrls.push(liveUrl);
+                      const json3Url = liveUrl.includes('fmt=')
+                        ? liveUrl.replace(/fmt=[^&]+/, 'fmt=json3')
+                        : `${liveUrl}&fmt=json3`;
+                      if (json3Url !== liveUrl) candidateUrls.push(json3Url);
+
+                      for (const u of candidateUrls) {
+                        try {
+                          const resp = await fetch(u, { credentials: 'include' });
+                          if (!resp.ok) continue;
+                          const body = await resp.text();
+                          const parsedText = parseTimedtextBody(body);
+                          if (parsedText) {
+                            timedtextPerfTranscript = parsedText;
+                            try {
+                              const parsedUrlObj = new URL(u, window.location.origin);
+                              timedtextLang = parsedUrlObj.searchParams.get('tlang') || parsedUrlObj.searchParams.get('lang') || '';
+                            } catch (_) {}
+                            break;
+                          }
+                        } catch (_) {
+                          // Thử URL kế tiếp
+                        }
+                      }
+                      if (timedtextPerfTranscript) break;
+                    }
+                  } catch (_) {
+                    // Fallback sang content.js bên dưới
+                  }
+                }
+
+                return {
+                  innertubeTranscript,
+                  timedtextPerfTranscript,
+                  timedtextLang,
+                  captionTracks,
+                  defaultAudioLanguage,
+                  chapters,
+                  title: pickResp?.videoDetails?.title || '',
+                  description: pickResp?.videoDetails?.shortDescription || '',
+                  author: pickResp?.videoDetails?.author || '',
+                  lengthSeconds
+                };
+              } catch (_) {
+                return null;
+              }
+            }
+          });
+          mainWorldData = mainExecResult?.result || null;
+        } catch (mainWorldErr) {
+          console.warn('Không thể đọc MAIN world ytInitialPlayerResponse, chuyển sang fallback content.js:', mainWorldErr);
+        }
+
+        // 3. Gắn content.js vào tab YouTube hiện tại và gửi message lấy dữ liệu theo chuỗi 4 tầng
+        await chrome.scripting.executeScript({
+          target: { tabId: activeTab.id },
+          files: ['content.js']
+        });
+
+        videoData = await chrome.tabs.sendMessage(activeTab.id, {
+          type: 'GET_YOUTUBE_DATA',
+          mainWorldData
+        });
+      }
 
       const rawTranscript = String(videoData?.transcript || '').trim();
+      const transcriptSource = String(videoData?.transcriptSource || '');
       const fallbackTitle = String(videoData?.title || activeTab.title || '').replace(/\s*-\s*YouTube\s*$/i, '').trim();
       const fallbackDescription = String(videoData?.description || '').trim();
-      const missingCCWarning = !videoData?.success || rawTranscript.length < 80;
+      const resolvedDurationSec = Math.max(
+        Number(videoData?.durationSeconds) || 0,
+        Number(mainWorldData?.lengthSeconds) || 0
+      );
+      const rawChapters =
+        (Array.isArray(videoData?.chapters) && videoData.chapters.length >= 2 ? videoData.chapters : null) ||
+        (Array.isArray(mainWorldData?.chapters) && mainWorldData.chapters.length >= 2 ? mainWorldData.chapters : null) ||
+        parseYoutubeChaptersFromDescription(fallbackDescription, resolvedDurationSec);
+
+      // Nếu chỉ bắt được 1 dòng phụ đề đang hiện trên màn hình (player_caption_only) thay vì toàn bộ transcript,
+      // kết hợp thêm tiêu đề & mô tả để AI không bị bó hẹp ở duy nhất 1 mốc 00:00
+      const isSingleLiveCaptionOnly = transcriptSource === 'player_caption_only' && rawTranscript.length < 180;
+      const missingCCWarning = !videoData?.success || rawTranscript.length === 0 || isSingleLiveCaptionOnly;
+      const coverageInfo = videoData?.coverage || null;
+      const incompleteCoverage =
+        !missingCCWarning &&
+        (coverageInfo?.status === 'partial' || transcriptSource === 'player_caption_only');
+      const incompleteCoverageNote = incompleteCoverage
+        ? coverageInfo?.missingKind === 'middle' && coverageInfo?.maxInternalGapSec > 180
+          ? `Phụ đề thu thập được bị khuyết đoạn giữa video (khoảng trống ~${Math.max(1, Math.round(coverageInfo.maxInternalGapSec / 60))} phút); bản tóm tắt chỉ phản ánh đúng các phần lời thoại hiện có.`
+          : coverageInfo?.missingKind === 'opening' && coverageInfo?.firstSec > 0
+            ? `Phụ đề thu thập được bị khuyết phần mở đầu (bắt đầu từ mốc ${formatYoutubeSeconds(coverageInfo.firstSec, resolvedDurationSec >= 3600)}); bản tóm tắt chỉ phản ánh đúng phần lời thoại hiện có.`
+            : coverageInfo?.lastSec > 0 && resolvedDurationSec > 0 && coverageInfo?.endReachRatio < 0.85
+              ? `Phụ đề thu thập được mới bao phủ tới mốc ${formatYoutubeSeconds(coverageInfo.lastSec, resolvedDurationSec >= 3600)} / ${formatYoutubeSeconds(resolvedDurationSec, resolvedDurationSec >= 3600)}; bản tóm tắt chỉ phản ánh đúng phần lời thoại hiện có.`
+              : 'Phụ đề thu thập được chỉ bao phủ một phần video; bản tóm tắt chỉ phản ánh đúng phần lời thoại hiện có.'
+        : '';
+
+      console.info('[SmartStudy YouTube]', {
+        transcriptSource,
+        transcriptLang: videoData?.transcriptLang || '',
+        detectedOriginalLang: videoData?.detectedOriginalLang || mainWorldData?.defaultAudioLanguage || '',
+        transcriptChars: rawTranscript.length,
+        durationSeconds: resolvedDurationSec,
+        chaptersCount: rawChapters.length,
+        coverageStatus: coverageInfo?.status || 'unknown',
+        missingCCWarning,
+        incompleteCoverage
+      });
 
       if (missingCCWarning && !fallbackTitle && !fallbackDescription) {
         const message = 'Video này chưa có phụ đề và không trích xuất được tiêu đề/mô tả để tóm tắt.';
@@ -5385,8 +7467,16 @@ document.addEventListener('DOMContentLoaded', () => {
         title: fallbackTitle || 'Video YouTube',
         channelName: String(videoData?.channelName || '').trim(),
         publishDate: String(videoData?.publishDate || '').trim(),
+        description: fallbackDescription,
         videoUrl: videoData?.videoUrl || activeTab.url,
         currentSeconds: Number(videoData?.currentSeconds) || 0,
+        durationSeconds: resolvedDurationSec,
+        detectedOriginalLang: videoData?.detectedOriginalLang || mainWorldData?.defaultAudioLanguage || '',
+        transcriptLang: videoData?.transcriptLang || '',
+        incompleteCoverage,
+        incompleteCoverageNote,
+        missingCCWarning,
+        chapters: rawChapters,
         transcript: missingCCWarning
           ? [
               `Tiêu đề video: ${fallbackTitle || 'Không rõ'}`,
@@ -5399,6 +7489,14 @@ document.addEventListener('DOMContentLoaded', () => {
           : rawTranscript
       };
 
+      // Chỉ cache transcript phiên khi phụ đề đầy đủ (không cache bản thiếu/partial để lần bấm sau có thể lấy lại bản đủ)
+      if (!missingCCWarning && !incompleteCoverage && activeVideoId) {
+        setYoutubeTranscriptCache(activeVideoId, {
+          ...effectiveVideoData,
+          transcriptSource
+        });
+      }
+
       // 3. Kiểm tra API Key trong chrome.storage.local
       const { geminiApiKey } = await chrome.storage.local.get('geminiApiKey');
 
@@ -5409,19 +7507,32 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      const summaryLevelValue = ['short', 'medium', 'detailed', 'simple'].includes(summaryLevel?.value)
-        ? summaryLevel.value
-        : 'medium';
-      const result = await callYouTubeGeminiWithFallback(
-        buildYoutubeSummaryPrompt(effectiveVideoData, summaryLevelValue),
+      const summaryLevelValue = saveYoutubeSummaryModePreference(summaryLevel?.value || 'simple');
+      if (summaryLevel) summaryLevel.value = summaryLevelValue;
+      const result = await summarizeYoutubeVideoSmart(
+        effectiveVideoData,
+        summaryLevelValue,
         geminiApiKey,
-        (modelName) => {
-          ytStatus.textContent = missingCCWarning
-            ? `Video không có phụ đề CC — đang gửi tiêu đề & mô tả tới model ${modelName}...`
-            : `Đã lấy phụ đề! Đang gửi tới model ${modelName} để tóm tắt...`;
-          setMascotStatus(`Đang gửi nội dung tới model ${modelName} để tóm tắt...`, 'loading');
+        (progressMessage) => {
+          ytStatus.textContent = progressMessage;
+          setMascotStatus(progressMessage, 'loading');
+        },
+        (partialResult) => {
+          // Hiển thị cuốn chiếu ngay khi hoàn thành từng đợt
+          renderYoutubeSummaryResult({
+            ...partialResult,
+            title: partialResult.title || effectiveVideoData.title,
+            channelName: effectiveVideoData.channelName,
+            publishDate: effectiveVideoData.publishDate,
+            videoUrl: effectiveVideoData.videoUrl,
+            currentSeconds: effectiveVideoData.currentSeconds,
+            missingCCWarning,
+            incompleteCoverage,
+            incompleteCoverageNote
+          });
         }
       );
+      const isPartialOutcome = result.completionStatus === 'partial' || incompleteCoverage;
       const summaryData = {
         ...result,
         title: result.title || effectiveVideoData.title,
@@ -5430,13 +7541,32 @@ document.addEventListener('DOMContentLoaded', () => {
         videoUrl: effectiveVideoData.videoUrl,
         currentSeconds: effectiveVideoData.currentSeconds,
         transcript: sampleYoutubeTranscript(effectiveVideoData.transcript),
-        missingCCWarning
+        missingCCWarning,
+        incompleteCoverage: isPartialOutcome && !missingCCWarning,
+        incompleteCoverageNote:
+          incompleteCoverageNote ||
+          (result.isPartialTranscript && result.coveredDurationSec > 0
+            ? `Phụ đề chỉ bao phủ tới mốc ${formatYoutubeSeconds(result.coveredDurationSec, resolvedDurationSec >= 3600)} / ${formatYoutubeSeconds(resolvedDurationSec, resolvedDurationSec >= 3600)}; bản tóm tắt chỉ phản ánh phần lời thoại hiện có.`
+            : '')
       };
       ytStatus.hidden = true;
       renderYoutubeSummaryResult(summaryData);
       try {
         await saveYoutubeSummaryToHistory(summaryData);
-        setMascotStatus('Đã tóm tắt và lưu lịch sử video YouTube.', 'idle');
+        if (missingCCWarning) {
+          setMascotStatus('Đã tổng hợp thông tin từ tiêu đề & mô tả (video thiếu phụ đề đầy đủ).', 'idle');
+        } else if (result.failedChunks > 0) {
+          setMascotStatus(
+            `Đã xử lý ${result.completedChunks}/${result.totalChunks} phần video (giữ nguyên kết quả phần đã hoàn tất).`,
+            'idle'
+          );
+        } else if (isPartialOutcome) {
+          setMascotStatus('Đã tóm tắt phần phụ đề hiện có của video (phụ đề gốc chưa phủ hết thời lượng).', 'idle');
+        } else if (result.completionStatus === 'sampled' || result.isSampledTranscript) {
+          setMascotStatus('Đã tóm tắt theo mẫu đại diện có kiểm soát và lưu lịch sử video YouTube.', 'idle');
+        } else {
+          setMascotStatus('Đã tóm tắt và lưu lịch sử video YouTube.', 'idle');
+        }
       } catch (error) {
         console.error('Không thể lưu tóm tắt YouTube vào lịch sử:', error);
         setMascotStatus(`Đã tóm tắt nhưng không thể lưu lịch sử: ${error.message}`, 'error');
@@ -5468,6 +7598,33 @@ document.addEventListener('DOMContentLoaded', async () => {
   const BACKEND_BASE_URL = API_BASE_URL;
   let isProcessingUrl = false;
 
+  const setSvgActionButtonLabel = (buttonEl, iconPaths, labelText) => {
+    if (!buttonEl) return;
+    const svgNS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(svgNS, 'svg');
+    svg.setAttribute('class', 'ui-icon');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('aria-hidden', 'true');
+    iconPaths.forEach((d) => {
+      const path = document.createElementNS(svgNS, 'path');
+      path.setAttribute('d', d);
+      svg.appendChild(path);
+    });
+    const span = document.createElement('span');
+    span.textContent = labelText;
+    buttonEl.replaceChildren(svg, span);
+  };
+
+  const VOCAB_BOOK_ICON_PATHS = [
+    'M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z',
+    'M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z'
+  ];
+  const WEAK_TARGET_ICON_PATHS = [
+    'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z',
+    'M12 18a6 6 0 1 0 0-12 6 6 0 0 0 0 12z',
+    'M12 14a2 2 0 1 0 0-4 2 2 0 0 0 0 4z'
+  ];
+
   // --- SPRINT 10.2: Nút mở nhanh Sổ tay Từ vựng Cần Ôn (X) & đồng bộ thời gian thực ---
   const quizViewCard = document.querySelector('#view-quiz .card');
   const quizResultAnchor = document.getElementById('quiz-result');
@@ -5479,7 +7636,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     vocabBankBtn.className = 'action-btn web-action';
     vocabBankBtn.style.marginTop = '10px';
     vocabBankBtn.style.width = '100%';
-    vocabBankBtn.textContent = '📚 Sổ tay Từ vựng Cần Ôn (0)';
+    setSvgActionButtonLabel(vocabBankBtn, VOCAB_BOOK_ICON_PATHS, 'Sổ tay Từ vựng Cần Ôn (0)');
     if (quizResultAnchor && quizResultAnchor.parentElement === quizViewCard) {
       quizViewCard.insertBefore(vocabBankBtn, quizResultAnchor);
     } else {
@@ -5491,7 +7648,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!vocabBankBtn) return;
     try {
       const dueList = await vocabStorageManager.getDueList(Date.now());
-      vocabBankBtn.textContent = `📚 Sổ tay Từ vựng Cần Ôn (${dueList.length})`;
+      setSvgActionButtonLabel(vocabBankBtn, VOCAB_BOOK_ICON_PATHS, `Sổ tay Từ vựng Cần Ôn (${dueList.length})`);
     } catch (error) {
       console.warn('Không thể đếm sổ tay từ vựng:', error);
     }
@@ -5582,7 +7739,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     weakRetestBtn.className = 'action-btn secondary-action';
     weakRetestBtn.style.marginTop = '8px';
     weakRetestBtn.style.width = '100%';
-    weakRetestBtn.textContent = '🎯 Ôn câu hay sai (0)';
+    setSvgActionButtonLabel(weakRetestBtn, WEAK_TARGET_ICON_PATHS, 'Ôn câu hay sai (0)');
     if (vocabBankBtn && vocabBankBtn.parentElement === quizViewCard) {
       vocabBankBtn.insertAdjacentElement('afterend', weakRetestBtn);
     } else if (quizResultAnchor && quizResultAnchor.parentElement === quizViewCard) {
@@ -5740,7 +7897,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   async function refreshWeakRetestButton() {
     if (!weakRetestBtn) return;
     const weakList = await getWeightedWeakQuizList();
-    weakRetestBtn.textContent = `🎯 Ôn câu hay sai (${weakList.length})`;
+    setSvgActionButtonLabel(weakRetestBtn, WEAK_TARGET_ICON_PATHS, `Ôn câu hay sai (${weakList.length})`);
   }
 
   if (weakRetestBtn) {
@@ -6786,10 +8943,59 @@ async function extractCleanDocument(tabId) {
         const isRepeatingFooterOrPageNumberLine = (line) => {
           const trimmed = (line || '').trim();
           if (!trimmed) return true;
-          if (/^(\[\s*date\s*\]|\d{1,4}|page\s+\d+(\s+of\s+\d+)?|trang\s+\d+(\s*\/\s*\d+)?)$/i.test(trimmed)) {
+          if (/\[\s*date\s*\]/i.test(trimmed)) {
+            return true;
+          }
+          if (/^(\d{1,4}|page\s+\d+(\s*(of|\/)\s*\d+)?|trang\s+\d+(\s*\/\s*\d+)?)$/i.test(trimmed)) {
             return true;
           }
           return false;
+        };
+
+        // Chuẩn hóa khoảng trắng sau ký hiệu liệt kê (-Giải quyết -> - Giải quyết)
+        const normalizeListMarkerSpacing = (str) => {
+          return String(str || '').replace(/^([\-+*•▪◆▸])([^\s\-+*•▪◆▸])/u, '$1 $2');
+        };
+
+        // Nhận diện dòng tiêu đề mục ngắn (<= 120 ký tự)
+        const isShortHeadingLine = (line) => {
+          const trimmed = (line || '').trim();
+          if (!trimmed || trimmed.length > 120) return false;
+          if (/^(CHƯƠNG|PHẦN|CÂU|BÀI|MỤC|CHỦ ĐỀ|VÍ DỤ\s*:|Ý NGHĨA)\b/i.test(trimmed)) {
+            return true;
+          }
+          if (/^([IVXLCDM]{1,6}|\d+(?:\.\d+)*|[a-zA-Z])[.)\/]\s+\S+/.test(trimmed)) {
+            return true;
+          }
+          if (/^\*\s+\S+/.test(trimmed)) {
+            return true;
+          }
+          return false;
+        };
+
+        // Nhận diện dòng bắt đầu bằng ký hiệu phân cấp/liệt kê (phải ngắt đoạn mới)
+        const startsWithHierarchyOrList = (line) => {
+          const trimmed = (line || '').trim();
+          if (!trimmed) return false;
+          if (/^(CHƯƠNG|PHẦN|CÂU|BÀI|MỤC|CHỦ ĐỀ|VÍ DỤ\s*:|Ý NGHĨA)\b/i.test(trimmed)) {
+            return true;
+          }
+          if (/^(\d+(?:\.\d+)*|[IVXLCDM]{1,6}|[a-zA-Z])[.)\/]\s*/.test(trimmed)) {
+            return true;
+          }
+          if (/^([\-+*•●▪◆▸❖✓➤➢]|=>|→)\s*/.test(trimmed)) {
+            return true;
+          }
+          return false;
+        };
+
+        // Chuẩn hóa thụt lề trái về các mức chuẩn gọn gàng (0", 0.25", 0.5", 0.75")
+        const snapIndentInches = (indentPx) => {
+          const rawInches = Math.max(0, indentPx) / 96;
+          if (rawInches <= 0.1) return 0;
+          if (rawInches < 0.37) return 0.25;
+          if (rawInches < 0.62) return 0.5;
+          return 0.75;
         };
 
         const isWatermarkLine = (line) => {
@@ -6964,13 +9170,8 @@ async function extractCleanDocument(tabId) {
             }
 
             const computed = window.getComputedStyle(node);
-            const weightNum = parseInt(computed.fontWeight, 10);
-            let isBold =
-              (!Number.isNaN(weightNum) && weightNum >= 600) ||
-              computed.fontWeight === 'bold' ||
-              computed.fontWeight === 'bolder' ||
-              node.closest('b, strong, h1, h2, h3, h4') !== null;
-
+            // Chỉ đánh dấu đậm thật sự khi nằm trong thẻ <b>/<strong>/<h1>..<h4> (tránh dính fontWeight kế thừa trên DOM Studocu)
+            let isExplicitBoldTag = node.closest('b, strong, h1, h2, h3, h4') !== null;
             let isItalic =
               computed.fontStyle === 'italic' ||
               computed.fontStyle === 'oblique' ||
@@ -6988,9 +9189,8 @@ async function extractCleanDocument(tabId) {
                 const childText = (child.innerText || child.textContent || '').trim();
                 if (!childText) return;
                 const cs = window.getComputedStyle(child);
-                const cw = parseInt(cs.fontWeight, 10);
-                if ((!Number.isNaN(cw) && cw >= 600) || cs.fontWeight === 'bold' || cs.fontWeight === 'bolder') {
-                  isBold = true;
+                if (child.matches('b, strong, h1, h2, h3, h4')) {
+                  isExplicitBoldTag = true;
                 }
                 if (cs.fontStyle === 'italic' || cs.fontStyle === 'oblique') {
                   isItalic = true;
@@ -7005,14 +9205,16 @@ async function extractCleanDocument(tabId) {
               });
             }
 
-            const fontSizePx = Math.round(parseFloat(computed.fontSize) || 12);
+            const fontSizePx = Math.round(parseFloat(computed.fontSize) || 13);
+            const rectHeight = Math.max(rect.height || 0, fontSizePx * 1.15);
 
             rawTextItems.push({
               text,
               top: rect.top - pageRect.top,
+              height: rectHeight,
               left: Math.max(0, rect.left - pageRect.left),
               right: Math.max(0, rect.right - pageRect.left),
-              bold: isBold,
+              bold: isExplicitBoldTag,
               italic: isItalic,
               underline: isUnderline,
               color: hexColor,
@@ -7029,9 +9231,11 @@ async function extractCleanDocument(tabId) {
             if (lastLine && Math.abs(item.top - lastLine.top) < 5) {
               lastLine.items.push(item);
               lastLine.top = (lastLine.top + item.top) / 2;
+              lastLine.height = Math.max(lastLine.height, item.height);
             } else {
               groupedLines.push({
                 top: item.top,
+                height: item.height,
                 items: [item]
               });
             }
@@ -7046,14 +9250,13 @@ async function extractCleanDocument(tabId) {
               ? Math.min(...groupedLines.map((lineGroup) => lineGroup.items[0].left))
               : 0;
 
-          const structuredItems = [];
-          const plainLines = [];
+          const topEdgeLimit = pageHeight * 0.08;
+          const bottomEdgeLimit = pageHeight * 0.92;
+
+          const lineCandidates = [];
 
           groupedLines.forEach((lineGroup) => {
-            // Lọc bỏ nếu dòng nằm sát mép dưới trang (top > pageHeight - 55)
-            if (lineGroup.top > pageHeight - 55) {
-              return;
-            }
+            const isEdgeRegion = lineGroup.top <= topEdgeLimit || lineGroup.top >= bottomEdgeLimit;
 
             let lineStr = '';
             let prevRight = null;
@@ -7061,12 +9264,12 @@ async function extractCleanDocument(tabId) {
             let italicCount = 0;
             let underlineCount = 0;
             let lineColor = null;
-            let maxFontSize = 12;
+            let maxFontSize = 13;
 
             lineGroup.items.forEach((frag) => {
               if (prevRight !== null) {
                 const gap = frag.left - prevRight;
-                lineStr += gap > 40 ? '\t' : ' ';
+                lineStr += gap > 40 ? ' ' : ' ';
               }
               lineStr += frag.text;
               prevRight = Math.max(prevRight ?? frag.right, frag.right);
@@ -7077,8 +9280,14 @@ async function extractCleanDocument(tabId) {
               if (frag.fontSize > maxFontSize) maxFontSize = frag.fontSize;
             });
 
-            const cleanedLine = normalizeBulletsAndPUA(lineStr.replace(/ +/g, ' ').trim());
+            const cleanedLine = normalizeListMarkerSpacing(
+              normalizeBulletsAndPUA(lineStr.replace(/ +/g, ' ').trim())
+            );
             if (!cleanedLine || isWatermarkLine(cleanedLine) || isRepeatingFooterOrPageNumberLine(cleanedLine)) {
+              return;
+            }
+            // Nếu nằm trong vùng 8% trên cùng hoặc 8% dưới cùng và chứa số trang/ngày/footer ngắn
+            if (isEdgeRegion && (/^\d{1,4}\s*$/.test(cleanedLine) || /\[\s*date\s*\]/i.test(cleanedLine))) {
               return;
             }
 
@@ -7089,25 +9298,31 @@ async function extractCleanDocument(tabId) {
             const lineWidth = Math.max(0, lineRight - lineLeft);
 
             const indentPx = Math.max(0, lineLeft - minLeft);
-            const indentInches = Math.min(2.5, Math.round((indentPx / 96) * 10) / 10);
-            const indentLevel = Math.min(6, Math.round(indentPx / 24));
+            const indentInches = snapIndentInches(indentPx);
+            const indentLevel = Math.min(3, Math.round(indentInches / 0.25));
 
             const isCenteredOnPage =
               Math.abs((lineLeft + lineRight) / 2 - pageCenter) < 15 &&
               lineWidth < pageWidth * 0.65 &&
               indentPx > 40;
 
-            const isLineBold = boldCount >= Math.ceil(lineGroup.items.length / 2);
+            const hasExplicitBold = boldCount >= Math.ceil(lineGroup.items.length / 2);
+            const isShortHeading = isShortHeadingLine(cleanedLine);
+            // Chống lỗi in đậm cả đoạn dài (> 120 ký tự mặc định bold: false)
+            const isLineBold =
+              cleanedLine.length <= 120 && (isShortHeading || hasExplicitBold);
             const isLineItalic = italicCount >= Math.ceil(lineGroup.items.length / 2);
             const isLineUnderline = underlineCount > 0;
 
-            const finalIndentInches = isCenteredOnPage ? 0 : indentInches;
-            const finalIndentLevel = isCenteredOnPage ? 0 : indentLevel;
+            const finalIndentInches = isCenteredOnPage || isShortHeading ? 0 : indentInches;
+            const finalIndentLevel = isCenteredOnPage || isShortHeading ? 0 : indentLevel;
 
-            structuredItems.push({
+            lineCandidates.push({
               type: 'text',
               text: cleanedLine,
               top: Math.round(lineGroup.top),
+              lineHeight: Math.max(lineGroup.height || 16, maxFontSize * 1.25),
+              lineLeft: Math.round(lineLeft),
               bold: isLineBold,
               italic: isLineItalic,
               underline: isLineUnderline,
@@ -7118,9 +9333,50 @@ async function extractCleanDocument(tabId) {
               indentLevel: finalIndentLevel,
               indent_level: finalIndentLevel,
               indentPx: isCenteredOnPage ? 0 : Math.round(indentPx),
-              fontSize: maxFontSize
+              fontSize: maxFontSize,
+              isEdgeRegion,
+              _isShortHeading: isShortHeading
             });
-            plainLines.push(cleanedLine);
+          });
+
+          // Smart Line Merging: gộp các dòng liên tiếp cùng lề trái (< 12px) và khoảng cách dọc bình thường (<= lineHeight * 1.45)
+          const structuredItems = [];
+          const plainLines = [];
+
+          lineCandidates.forEach((cand) => {
+            const prev = structuredItems.length > 0 ? structuredItems[structuredItems.length - 1] : null;
+            const canMerge =
+              prev &&
+              prev.type === 'text' &&
+              !prev.isEdgeRegion &&
+              !cand.isEdgeRegion &&
+              !prev.center &&
+              !cand.center &&
+              !prev._isShortHeading &&
+              !cand._isShortHeading &&
+              !startsWithHierarchyOrList(cand.text) &&
+              Math.abs(cand.lineLeft - prev.lineLeft) < 12 &&
+              cand.top - prev._lastTop <= prev.lineHeight * 1.45 &&
+              prev.text.length + cand.text.length <= 1200;
+
+            if (canMerge) {
+              if (prev.text.endsWith('-') && !prev.text.endsWith(' -')) {
+                prev.text = `${prev.text.slice(0, -1)}${cand.text}`;
+              } else {
+                prev.text = `${prev.text} ${cand.text}`;
+              }
+              prev._lastTop = cand.top;
+              if (prev.text.length > 120) {
+                prev.bold = false;
+              }
+              plainLines[plainLines.length - 1] = prev.text;
+            } else {
+              structuredItems.push({
+                ...cand,
+                _lastTop: cand.top
+              });
+              plainLines.push(cand.text);
+            }
           });
 
           // Quét các thẻ <img> minh họa thực sự trong trang (bỏ qua ảnh nền trang img.bi, ảnh mờ /blurred/ hoặc ảnh > 70% diện tích trang)
@@ -7293,12 +9549,48 @@ async function extractCleanDocument(tabId) {
         const failedLoadPages = Array.from(failedLoadPagesSet).sort((a, b) => a - b);
 
         const sortedStructuredEntries = Array.from(pagesStructuredMap.entries()).sort((a, b) => a[0] - b[0]);
-        const sortedTextEntries = Array.from(pagesTextMap.entries()).sort((a, b) => a[0] - b[0]);
+
+        // Lọc sạch các dòng Header/Footer lặp lại ở vùng 8% trên cùng / 8% dưới cùng xuất hiện từ 2 trang trở lên
+        const edgeTextPageCount = new Map();
+        if (sortedStructuredEntries.length >= 2) {
+          sortedStructuredEntries.forEach(([, items]) => {
+            if (!Array.isArray(items)) return;
+            const seenOnThisPage = new Set();
+            items.forEach((it) => {
+              if (it?.type !== 'text' || !it.isEdgeRegion) return;
+              const norm = String(it.text || '').replace(/\s+/g, ' ').trim().toLowerCase();
+              if (norm && !seenOnThisPage.has(norm)) {
+                seenOnThisPage.add(norm);
+                edgeTextPageCount.set(norm, (edgeTextPageCount.get(norm) || 0) + 1);
+              }
+            });
+          });
+        }
+        const repeatedEdgeSet = new Set(
+          Array.from(edgeTextPageCount.entries())
+            .filter(([, count]) => count >= 2)
+            .map(([textKey]) => textKey)
+        );
 
         const pagesStructured = sortedStructuredEntries
-          .map(([, items]) => (Array.isArray(items) ? items : []))
+          .map(([, items]) => {
+            if (!Array.isArray(items)) return [];
+            return items.filter((it) => {
+              if (it?.type !== 'text') return true;
+              const norm = String(it.text || '').replace(/\s+/g, ' ').trim().toLowerCase();
+              if (it.isEdgeRegion && repeatedEdgeSet.has(norm)) return false;
+              return true;
+            });
+          })
           .filter((items) => items.length > 0);
-        const pagesText = sortedTextEntries.map((entry) => String(entry[1] || '')).filter(Boolean);
+        const pagesText = pagesStructured
+          .map((items) =>
+            items
+              .filter((it) => it?.type === 'text' && it.text)
+              .map((it) => it.text)
+              .join('\n')
+          )
+          .filter(Boolean);
 
         // 3. Bọc bản sao #page-container đã làm sạch vào đủ 3 lớp thẻ div cha: #page-container-wrapper > #document-wrapper > #viewer-wrapper
         const headStyles = collectHeadStyles();
@@ -8474,4 +10766,196 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   }
+});
+
+
+// --- SMART WORD FORM UX: Hồ sơ Sinh viên tự lưu, Tự điền Ngày/Acronym/CreatedBy & Chuyển nhanh Cá nhân/Nhóm ---
+document.addEventListener('DOMContentLoaded', async () => {
+  const PROFILE_KEY = 'smartStudyStudentProfile';
+
+  const essayFaculty = document.getElementById('wf-essay-faculty');
+  const essayClass = document.getElementById('wf-essay-class');
+  const essayDate = document.getElementById('wf-essay-date');
+  const essayGroup = document.getElementById('wf-essay-group');
+  const essayGroupWrap = document.getElementById('wf-essay-group-wrap');
+  const essayStudent = document.getElementById('wf-essay-student');
+  const essayStudentLabel = document.getElementById('wf-essay-student-label');
+  const scopeButtons = Array.from(document.querySelectorAll('.wf-scope-pill[data-essay-scope]'));
+
+  const cmuFullname = document.getElementById('wf-cmu-fullname');
+  const cmuStudentId = document.getElementById('wf-cmu-student-id');
+  const cmuContact = document.getElementById('wf-cmu-contact');
+  const cmuCreatedBy = document.getElementById('wf-cmu-created-by');
+  const cmuTitle = document.getElementById('wf-cmu-title');
+  const cmuAcronym = document.getElementById('wf-cmu-acronym');
+  const cmuDate = document.getElementById('wf-cmu-date');
+  const cmuStartDate = document.getElementById('wf-cmu-start-date');
+  const cmuEndDate = document.getElementById('wf-cmu-end-date');
+
+  const formatVietnameseToday = () => {
+    const now = new Date();
+    const d = String(now.getDate()).padStart(2, '0');
+    const m = String(now.getMonth() + 1).padStart(2, '0');
+    return `Đà Nẵng, ngày ${d} tháng ${m} năm ${now.getFullYear()}`;
+  };
+
+  const formatEnglishDate = (dateObj) => {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const day = dateObj.getDate();
+    const suffix =
+      day % 10 === 1 && day !== 11 ? 'st'
+        : day % 10 === 2 && day !== 12 ? 'nd'
+          : day % 10 === 3 && day !== 13 ? 'rd'
+            : 'th';
+    return `${months[dateObj.getMonth()]} ${day}${suffix}, ${dateObj.getFullYear()}`;
+  };
+
+  const buildAcronymFromTitle = (title) => {
+    const words = String(title || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^A-Za-z0-9\s]/g, ' ')
+      .trim()
+      .split(/\s+/)
+      .filter((w) => w.length > 0 && !/^(and|or|the|of|for|in|on|to|a|an|with|by|cua|va|cho|trong)$/i.test(w));
+    if (!words.length) return '';
+    return words.slice(0, 5).map((w) => w[0].toUpperCase()).join('');
+  };
+
+  // 1. Tự điền ngày mặc định nếu đang trống
+  const today = new Date();
+  const twoWeeksAgo = new Date(today.getTime() - 14 * 24 * 60 * 60 * 1000);
+  if (essayDate && !essayDate.value.trim()) {
+    essayDate.value = formatVietnameseToday();
+  }
+  if (cmuDate && !cmuDate.value.trim()) {
+    cmuDate.value = formatEnglishDate(today);
+  }
+  if (cmuEndDate && !cmuEndDate.value.trim()) {
+    cmuEndDate.value = formatEnglishDate(today);
+  }
+  if (cmuStartDate && !cmuStartDate.value.trim()) {
+    cmuStartDate.value = formatEnglishDate(twoWeeksAgo);
+  }
+
+  // 2. Nạp Hồ sơ Sinh viên đã lưu (1 lần nhập, dùng mãi cho Tiểu luận & Báo cáo CMU)
+  let savedProfile = {};
+  try {
+    const stored = await chrome.storage.local.get(PROFILE_KEY);
+    savedProfile = stored?.[PROFILE_KEY] && typeof stored[PROFILE_KEY] === 'object' ? stored[PROFILE_KEY] : {};
+  } catch (_) {
+    savedProfile = {};
+  }
+
+  if (essayFaculty && !essayFaculty.value.trim() && savedProfile.faculty) {
+    essayFaculty.value = savedProfile.faculty;
+  }
+  if (essayClass && !essayClass.value.trim() && savedProfile.className) {
+    essayClass.value = savedProfile.className;
+  }
+  if (cmuFullname && !cmuFullname.value.trim() && savedProfile.fullName) {
+    cmuFullname.value = savedProfile.fullName;
+  }
+  if (cmuStudentId && !cmuStudentId.value.trim() && savedProfile.studentId) {
+    cmuStudentId.value = savedProfile.studentId;
+  }
+  if (cmuContact && !cmuContact.value.trim() && savedProfile.contact) {
+    cmuContact.value = savedProfile.contact;
+  }
+  if (cmuCreatedBy && !cmuCreatedBy.value.trim() && cmuFullname?.value.trim()) {
+    cmuCreatedBy.value = cmuFullname.value.trim();
+  }
+
+  const persistProfile = () => {
+    const nextProfile = {
+      faculty: essayFaculty?.value.trim() || savedProfile.faculty || '',
+      className: essayClass?.value.trim() || savedProfile.className || '',
+      fullName: cmuFullname?.value.trim() || savedProfile.fullName || '',
+      studentId: cmuStudentId?.value.trim() || savedProfile.studentId || '',
+      contact: cmuContact?.value.trim() || savedProfile.contact || ''
+    };
+    savedProfile = nextProfile;
+    try {
+      chrome.storage.local.set({ [PROFILE_KEY]: nextProfile });
+    } catch (_) {
+      // Bỏ qua nếu không lưu được storage
+    }
+  };
+
+  [essayFaculty, essayClass, cmuFullname, cmuStudentId, cmuContact].forEach((el) => {
+    if (!el) return;
+    el.addEventListener('change', persistProfile);
+    el.addEventListener('blur', persistProfile);
+  });
+
+  // 3. Tự đồng bộ Created by từ Full Name & tự tạo Acronym từ Tên đề tài CMU
+  let manualCreatedBy = Boolean(
+    cmuCreatedBy?.value.trim() &&
+    cmuFullname?.value.trim() &&
+    cmuCreatedBy.value.trim() !== cmuFullname.value.trim()
+  );
+  if (cmuCreatedBy) {
+    cmuCreatedBy.addEventListener('input', () => {
+      manualCreatedBy = Boolean(cmuCreatedBy.value.trim());
+    });
+  }
+  if (cmuFullname && cmuCreatedBy) {
+    cmuFullname.addEventListener('input', () => {
+      if (!manualCreatedBy || !cmuCreatedBy.value.trim()) {
+        cmuCreatedBy.value = cmuFullname.value.trim();
+      }
+    });
+  }
+
+  let manualAcronym = Boolean(cmuAcronym?.value.trim());
+  if (cmuAcronym) {
+    cmuAcronym.addEventListener('input', () => {
+      manualAcronym = Boolean(cmuAcronym.value.trim());
+    });
+  }
+  if (cmuTitle && cmuAcronym) {
+    cmuTitle.addEventListener('input', () => {
+      if (!manualAcronym || !cmuAcronym.value.trim()) {
+        cmuAcronym.value = buildAcronymFromTitle(cmuTitle.value);
+      }
+    });
+  }
+
+  // 4. Chuyển nhanh Cá nhân / Làm nhóm trong Tiểu luận
+  const applyEssayScope = (scope) => {
+    const isIndividual = scope === 'individual';
+    scopeButtons.forEach((btn) => {
+      const active = btn.dataset.essayScope === scope;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+    if (essayGroupWrap) {
+      essayGroupWrap.hidden = isIndividual;
+    }
+    if (isIndividual && essayGroup) {
+      essayGroup.value = '';
+    }
+    if (essayStudentLabel) {
+      essayStudentLabel.textContent = isIndividual
+        ? 'Sinh viên thực hiện (Họ tên | MSSV)'
+        : 'Thành viên (Họ tên | MSSV | Nhiệm vụ | %)';
+    }
+    if (essayStudent) {
+      essayStudent.rows = isIndividual ? 1 : 3;
+      essayStudent.placeholder = isIndividual
+        ? 'Nguyễn Văn A | 123456789'
+        : 'Nguyễn Văn A | 123456789 | Chương 1 | 100%\nTrần Thị B | 987654321 | Chương 2 | 100%';
+      if (isIndividual && !essayStudent.value.trim() && savedProfile.fullName) {
+        essayStudent.value = savedProfile.studentId
+          ? `${savedProfile.fullName} | ${savedProfile.studentId}`
+          : savedProfile.fullName;
+      }
+    }
+  };
+
+  scopeButtons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      applyEssayScope(btn.dataset.essayScope || 'group');
+    });
+  });
 });

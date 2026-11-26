@@ -32,6 +32,16 @@
   --logo-size: 36px;
   --logo-compact-size: 28px;
 
+  /* Smart Animate & Interactive Component Physics (inherited across all 15 themes) */
+  --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-snappy: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --dur-fast: 140ms;
+  --dur-normal: 220ms;
+  --dur-smooth: 320ms;
+  --interactive-glow: 0 8px 22px -6px color-mix(in oklab, var(--accent) 44%, transparent);
+  --interactive-glow-soft: 0 4px 14px -4px color-mix(in oklab, var(--accent) 28%, transparent);
+  --interactive-ring: 0 0 0 3px color-mix(in oklab, var(--accent) 28%, transparent);
+
   /* Compatibility aliases for existing sidebar.css & practice.css */
   --bg-surface: var(--bg-card);
   --bg-nav: var(--bg-elevated);

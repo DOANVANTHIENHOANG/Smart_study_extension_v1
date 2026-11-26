@@ -541,7 +541,7 @@ button:disabled {
 
 .flashcard-example-label {
   display: block;
-  color: #0369a1;
+  color: var(--accent);
   font-size: 0.76rem;
   font-weight: 800;
   letter-spacing: 0.06em;
@@ -550,19 +550,24 @@ button:disabled {
 
 .flashcard-example-en {
   margin: 8px 0 0 !important;
-  color: #0f172a !important;
+  color: var(--text-main) !important;
+  opacity: 1 !important;
   font-size: 1.08rem !important;
   line-height: 1.55 !important;
 }
 
 .flashcard-example-en strong {
-  color: #1d4ed8;
+  color: var(--accent);
+  background: color-mix(in oklab, var(--accent) 18%, transparent);
+  padding: 1px 5px;
+  border-radius: 6px;
   font-weight: 800;
 }
 
 .flashcard-example-vi {
   margin: 6px 0 0 !important;
-  color: #475569 !important;
+  color: var(--text-muted) !important;
+  opacity: 1 !important;
   font-size: 0.95rem !important;
   font-style: italic;
   line-height: 1.5 !important;
@@ -575,13 +580,13 @@ button:disabled {
 }
 
 .flashcard-back h2 {
-  color: #0f766e;
+  color: var(--accent);
 }
 
 .flashcard-back p {
   max-width: 100%;
   margin: 18px 0 0;
-  color: #334155;
+  color: var(--text-main);
   font-size: 1rem;
   line-height: 1.7;
   white-space: pre-wrap;
@@ -2256,6 +2261,171 @@ textarea:focus-visible {
   gap: 8px;
 }
 
+/* Sprint 15: High-Contrast Dark Mode Polish & Analytics Toggle */
+.analytics-toggle-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+.sentence-target-word {
+  color: var(--text-main) !important;
+}
+
+.dictation-meaning,
+#sentence-target-meaning {
+  color: var(--accent) !important;
+}
+
+.dictation-context,
+#sentence-ref-context,
+.dictation-answer-reveal,
+.sentence-feedback-box,
+.review-card,
+.review-card h4,
+.review-card p,
+.review-card .review-explanation {
+  color: var(--text-main);
+}
+
+.sentence-feedback-box,
+.review-card {
+  background: var(--bg-elevated);
+  border-color: var(--border-subtle);
+}
+
+.dictation-hint-text {
+  color: var(--accent-secondary);
+}
+
+.srs-status-toast {
+  color: var(--accent);
+}
+
+.story-turn-item {
+  background: var(--bg-elevated) !important;
+  border-color: var(--border-subtle) !important;
+  color: var(--text-main) !important;
+}
+
+.story-turn-item:nth-child(even) {
+  background: color-mix(in oklab, var(--accent) 12%, var(--bg-elevated)) !important;
+  border-color: color-mix(in oklab, var(--accent) 32%, var(--border-subtle)) !important;
+}
+
+.story-turn-item.is-speaking-turn {
+  border-color: var(--accent) !important;
+  background: color-mix(in oklab, var(--accent) 20%, var(--bg-elevated)) !important;
+  box-shadow: 0 0 0 2px color-mix(in oklab, var(--accent) 35%, transparent);
+}
+
+.story-turn-en {
+  color: var(--text-main) !important;
+  opacity: 1 !important;
+}
+
+.story-turn-en strong {
+  color: var(--accent-text);
+  background: var(--accent);
+  padding: 1px 7px;
+  border-radius: 6px;
+}
+
+.story-turn-vi {
+  color: var(--text-muted) !important;
+  opacity: 1 !important;
+}
+
+.story-speaker-badge {
+  background: color-mix(in oklab, var(--accent) 26%, var(--bg-card));
+  color: var(--text-main);
+  border: 1px solid color-mix(in oklab, var(--accent) 45%, var(--border-subtle));
+}
+
+.story-turn-item:nth-child(even) .story-speaker-badge {
+  background: color-mix(in oklab, var(--accent-secondary) 26%, var(--bg-card));
+  color: var(--text-main);
+  border: 1px solid color-mix(in oklab, var(--accent-secondary) 45%, var(--border-subtle));
+}
+
+.story-word-chip {
+  background: color-mix(in oklab, var(--accent) 16%, var(--bg-card));
+  border-color: color-mix(in oklab, var(--accent) 42%, var(--border-subtle));
+  color: var(--text-main);
+}
+
+.story-cloze-input {
+  background: var(--bg-card);
+  border-color: var(--accent);
+  color: var(--text-main);
+}
+
+.story-cloze-score {
+  color: var(--accent);
+}
+
+.speaker-btn-pill {
+  background: color-mix(in oklab, var(--accent) 16%, var(--bg-elevated));
+  border-color: color-mix(in oklab, var(--accent) 45%, var(--border-subtle));
+  color: var(--text-main);
+}
+
+.flashcard-pos {
+  background: color-mix(in oklab, var(--accent) 20%, var(--bg-elevated));
+  color: var(--text-main);
+  border: 1px solid color-mix(in oklab, var(--accent) 42%, var(--border-subtle));
+}
+
+.flashcard-source-badge {
+  background: color-mix(in oklab, var(--accent-secondary) 18%, var(--bg-elevated));
+  color: var(--text-main);
+  border: 1px solid color-mix(in oklab, var(--accent-secondary) 42%, var(--border-subtle));
+}
+
+.flashcard-topic {
+  background: color-mix(in oklab, var(--accent-secondary) 22%, var(--bg-elevated));
+  color: var(--text-main);
+  border: 1px solid color-mix(in oklab, var(--accent-secondary) 48%, var(--border-subtle));
+}
+
+.srs-btn-unknown {
+  background: color-mix(in oklab, #fb7185 18%, var(--bg-elevated));
+  border-color: color-mix(in oklab, #fb7185 55%, var(--border-subtle));
+  color: var(--text-main);
+}
+
+.srs-btn-unknown:hover:not(:disabled) {
+  background: color-mix(in oklab, #fb7185 28%, var(--bg-elevated));
+}
+
+.srs-btn-known {
+  background: color-mix(in oklab, #22c55e 18%, var(--bg-elevated));
+  border-color: color-mix(in oklab, #22c55e 55%, var(--border-subtle));
+  color: var(--text-main);
+}
+
+.srs-btn-known:hover:not(:disabled) {
+  background: color-mix(in oklab, #22c55e 28%, var(--bg-elevated));
+}
+
+.mastery-chip.is-box0 {
+  background: color-mix(in oklab, #ef4444 18%, var(--bg-elevated));
+  border-color: color-mix(in oklab, #ef4444 50%, var(--border-subtle));
+  color: var(--text-main);
+}
+
+.mastery-chip.is-box1 {
+  background: color-mix(in oklab, #f59e0b 18%, var(--bg-elevated));
+  border-color: color-mix(in oklab, #f59e0b 50%, var(--border-subtle));
+  color: var(--text-main);
+}
+
+.mastery-chip.is-mastered {
+  background: color-mix(in oklab, #10b981 18%, var(--bg-elevated));
+  border-color: color-mix(in oklab, #10b981 50%, var(--border-subtle));
+  color: var(--text-main);
+}
+
 /* Auto-Compact Layout for narrow screens (<= 640px & <= 400px) */
 @media (max-width: 640px) {
   .practice-options {
@@ -2326,3 +2496,807 @@ textarea:focus-visible {
 }
 
 
+
+
+/* ==========================================================================
+   Smart Animate & Interactive Components (Adaptive across all 15 Themes)
+   ========================================================================== */
+.practice-btn,
+.practice-tab-btn,
+.practice-mode-btn,
+.mode-tab-btn,
+.topic-pill-btn,
+.quiz-option-card,
+.srs-rate-btn,
+.flashcard-action-btn,
+#toggle-analytics-btn {
+  transition:
+    transform var(--dur-normal, 220ms) var(--ease-spring, cubic-bezier(0.22, 1, 0.36, 1)),
+    background-color var(--dur-normal, 220ms) var(--ease-snappy, ease),
+    border-color var(--dur-normal, 220ms) var(--ease-snappy, ease),
+    color var(--dur-fast, 140ms) ease,
+    box-shadow var(--dur-normal, 220ms) var(--ease-spring, cubic-bezier(0.22, 1, 0.36, 1));
+}
+
+.practice-btn:hover:not(:disabled),
+.practice-tab-btn:hover:not(:disabled),
+.mode-tab-btn:hover:not(:disabled),
+.topic-pill-btn:hover:not(:disabled),
+.srs-rate-btn:hover:not(:disabled),
+#toggle-analytics-btn:hover:not(:disabled) {
+  transform: translateY(-1.5px);
+  box-shadow: var(--interactive-glow-soft, 0 4px 14px -4px color-mix(in oklab, var(--accent) 28%, transparent));
+}
+
+.practice-btn:active:not(:disabled),
+.practice-tab-btn:active:not(:disabled),
+.mode-tab-btn:active:not(:disabled),
+.topic-pill-btn:active:not(:disabled),
+.srs-rate-btn:active:not(:disabled),
+#toggle-analytics-btn:active:not(:disabled) {
+  transform: scale(0.97) translateY(0.5px);
+  box-shadow: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .practice-btn,
+  .practice-tab-btn,
+  .practice-mode-btn,
+  .mode-tab-btn,
+  .topic-pill-btn,
+  .quiz-option-card,
+  .srs-rate-btn,
+  .flashcard-action-btn,
+  #toggle-analytics-btn {
+    transition: none !important;
+    transform: none !important;
+  }
+}
+
+
+/* ==========================================================================
+   Clean Modern UI Polish — Practice Room (Flashcard, Quiz & Navigation)
+   Minimalist, clutter-free hierarchy across all 15 Themes (Dark & Light)
+   ========================================================================== */
+.practice-header {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 12px 20px;
+  gap: 12px;
+}
+
+.practice-header-title h1 {
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+}
+
+.practice-mode-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+}
+
+.mode-switch-btn {
+  border-radius: 9px;
+  border: 1px solid transparent;
+  padding: 7px 12px;
+  font-size: 0.8rem;
+  font-weight: 650;
+  color: var(--text-muted);
+  background: transparent;
+  transition:
+    background-color var(--dur-fast, 140ms) ease,
+    color var(--dur-fast, 140ms) ease,
+    border-color var(--dur-fast, 140ms) ease,
+    transform var(--dur-normal, 220ms) var(--ease-spring, cubic-bezier(0.22, 1, 0.36, 1)),
+    box-shadow var(--dur-normal, 220ms) var(--ease-spring, cubic-bezier(0.22, 1, 0.36, 1));
+}
+
+.mode-switch-btn:hover:not(.active) {
+  color: var(--text-main);
+  background: color-mix(in oklab, var(--accent) 10%, transparent);
+}
+
+.mode-switch-btn.active {
+  background: var(--bg-card);
+  border-color: color-mix(in oklab, var(--accent) 45%, var(--border-subtle));
+  color: var(--accent);
+  box-shadow: var(--interactive-glow-soft, 0 4px 12px -4px color-mix(in oklab, var(--accent) 26%, transparent));
+}
+
+.practice-main {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 20px 18px 36px;
+  gap: 18px;
+}
+
+/* Clean Quiz Card & Options */
+.question-card,
+.dictation-card,
+.sentence-card {
+  border-radius: 20px;
+  padding: 26px 28px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-card);
+}
+
+.question-number {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--accent-light);
+  color: var(--accent);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  margin-bottom: 12px;
+}
+
+#practice-question {
+  font-size: 1.18rem;
+  line-height: 1.55;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 18px;
+}
+
+.practice-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.practice-option-btn,
+.practice-options button {
+  border-radius: 13px;
+  padding: 13px 16px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+  color: var(--text-main);
+  transition:
+    transform var(--dur-normal, 220ms) var(--ease-spring, cubic-bezier(0.22, 1, 0.36, 1)),
+    border-color var(--dur-fast, 140ms) ease,
+    background-color var(--dur-fast, 140ms) ease,
+    box-shadow var(--dur-normal, 220ms) var(--ease-spring, cubic-bezier(0.22, 1, 0.36, 1));
+}
+
+.practice-option-btn:hover:not(:disabled),
+.practice-options button:hover:not(:disabled) {
+  transform: translateX(3px);
+  border-color: var(--accent);
+  background: color-mix(in oklab, var(--accent) 12%, var(--bg-elevated));
+  box-shadow: var(--interactive-glow-soft);
+}
+
+.practice-explanation {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border-left: 3px solid var(--accent);
+  background: var(--bg-elevated);
+  color: var(--text-main);
+  line-height: 1.6;
+}
+
+/* Clean Centerpiece Flashcard Stage */
+.flashcard-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+}
+
+.flashcard-face {
+  border-radius: 22px;
+  padding: 30px 32px;
+  border: 1px solid var(--border-subtle);
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--accent) 6%, var(--bg-card)) 0%,
+    var(--bg-card) 38%
+  );
+  box-shadow: var(--shadow-card);
+}
+
+.flashcard-hint {
+  opacity: 0.72;
+  font-size: 0.78rem;
+  letter-spacing: 0.01em;
+}
+
+.flashcard-controls {
+  display: grid;
+  grid-template-columns: 1fr 1.2fr 1fr;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.flashcard-srs-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.srs-btn {
+  border-radius: 13px;
+  padding: 12px 16px;
+  font-weight: 700;
+  transition:
+    transform var(--dur-normal, 220ms) var(--ease-spring, cubic-bezier(0.22, 1, 0.36, 1)),
+    box-shadow var(--dur-normal, 220ms) var(--ease-spring, cubic-bezier(0.22, 1, 0.36, 1)),
+    filter var(--dur-fast, 140ms) ease;
+}
+
+.srs-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  filter: brightness(1.06);
+}
+
+.srs-btn:active:not(:disabled) {
+  transform: scale(0.975);
+}
+
+.practice-primary-btn,
+.practice-secondary-btn {
+  border-radius: 11px;
+  transition:
+    transform var(--dur-normal, 220ms) var(--ease-spring, cubic-bezier(0.22, 1, 0.36, 1)),
+    border-color var(--dur-fast, 140ms) ease,
+    background-color var(--dur-fast, 140ms) ease,
+    box-shadow var(--dur-normal, 220ms) var(--ease-spring, cubic-bezier(0.22, 1, 0.36, 1));
+}
+
+.practice-primary-btn:hover:not(:disabled),
+.practice-secondary-btn:hover:not(:disabled) {
+  transform: translateY(-1.5px);
+  box-shadow: var(--interactive-glow-soft);
+}
+
+.practice-primary-btn:active:not(:disabled),
+.practice-secondary-btn:active:not(:disabled) {
+  transform: scale(0.975);
+}
+
+@media (max-width: 640px) {
+  .question-card,
+  .dictation-card,
+  .sentence-card,
+  .flashcard-face {
+    padding: 18px 16px;
+    border-radius: 16px;
+  }
+  .flashcard-controls {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* ==========================================================================
+   Roleplay / Micro-Story UI Polish — 2-Zone Toolbar, Shimmer Skeleton & Chat Bubbles
+   Adaptive across all 15 Themes (Dark & Light)
+   ========================================================================== */
+.practice-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 18px;
+}
+
+.practice-header-brand {
+  min-width: 0;
+  flex: 1 1 240px;
+}
+
+.practice-header-title h1 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 360px;
+}
+
+.story-card {
+  border-radius: 20px;
+  padding: 24px 26px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-card);
+}
+
+.story-header {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.story-scenario-title {
+  margin: 4px 0 0;
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  color: var(--text-main);
+}
+
+.story-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 14px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+}
+
+.story-toolbar-primary,
+.story-toolbar-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.story-audio-cluster {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px;
+  border-radius: 11px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+}
+
+.story-audio-btn {
+  border: 0 !important;
+  background: transparent !important;
+  padding: 6px 10px !important;
+  min-height: 32px;
+}
+
+.story-toolbar .practice-primary-btn,
+.story-toolbar .practice-secondary-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 11px;
+  font-size: 0.79rem;
+  min-height: 34px;
+}
+
+.story-target-words-bar:empty {
+  display: none !important;
+}
+
+.story-target-words-bar {
+  margin-top: 12px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+}
+
+.story-status-msg {
+  margin-top: 12px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in oklab, var(--accent) 35%, var(--border-subtle));
+  background: color-mix(in oklab, var(--accent) 10%, var(--bg-elevated));
+  color: var(--text-main);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+/* Roleplay Chat-Bubble Shimmer Skeleton */
+.story-skeleton-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.story-skeleton-wrap[hidden] {
+  display: none !important;
+}
+
+.story-skeleton-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.story-skeleton-row.is-right {
+  justify-content: flex-end;
+}
+
+.story-skeleton-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  flex: 0 0 30px;
+  background: color-mix(in oklab, var(--accent) 18%, var(--bg-elevated));
+}
+
+.story-skeleton-bubble {
+  width: min(74%, 440px);
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.story-skeleton-row.is-right .story-skeleton-bubble {
+  background: color-mix(in oklab, var(--accent) 10%, var(--bg-elevated));
+  border-bottom-right-radius: 5px;
+}
+
+.story-skeleton-row.is-left .story-skeleton-bubble {
+  border-bottom-left-radius: 5px;
+}
+
+.story-skeleton-line {
+  display: block;
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--text-muted) 16%, transparent) 25%,
+    color-mix(in oklab, var(--accent) 26%, transparent) 50%,
+    color-mix(in oklab, var(--text-muted) 16%, transparent) 75%
+  );
+  background-size: 220% 100%;
+  animation: story-shimmer 1.4s ease-in-out infinite;
+}
+
+.story-skeleton-line.w-85 { width: 85%; }
+.story-skeleton-line.w-80 { width: 80%; }
+.story-skeleton-line.w-75 { width: 75%; }
+.story-skeleton-line.w-60 { width: 60%; }
+.story-skeleton-line.w-55 { width: 55%; }
+.story-skeleton-line.w-45 { width: 45%; }
+
+@keyframes story-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* 2-Speaker Roleplay Chat Bubble Styling */
+.story-dialogue-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.story-dialogue-list:empty {
+  display: none;
+}
+
+.story-turn,
+.story-dialogue-item {
+  border-radius: 16px;
+  padding: 13px 15px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+  max-width: 90%;
+  transition: transform var(--dur-normal, 220ms) var(--ease-spring, cubic-bezier(0.22, 1, 0.36, 1)), border-color 140ms ease;
+}
+
+.story-turn:nth-child(odd),
+.story-dialogue-item:nth-child(odd) {
+  align-self: flex-start;
+  border-bottom-left-radius: 5px;
+}
+
+.story-turn:nth-child(even),
+.story-dialogue-item:nth-child(even) {
+  align-self: flex-end;
+  border-bottom-right-radius: 5px;
+  background: color-mix(in oklab, var(--accent) 10%, var(--bg-elevated));
+  border-color: color-mix(in oklab, var(--accent) 30%, var(--border-subtle));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .story-skeleton-line {
+    animation: none !important;
+  }
+}
+
+
+/* ==========================================================================
+   Flashcard Hero-First Layout — Eliminate 3-Box Clutter & Fit Above The Fold
+   ========================================================================== */
+.practice-main {
+  padding: 12px 18px 28px !important;
+  gap: 10px !important;
+}
+
+/* 1. Thu gọn tối đa thanh Tiến độ Sổ tay Từ vựng (~68px thay vì 155px) */
+.vocab-mastery-progress-card {
+  padding: 10px 14px !important;
+  gap: 7px !important;
+  border-radius: 14px !important;
+  box-shadow: none !important;
+}
+
+.vocab-mastery-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px !important;
+}
+
+.vocab-mastery-title {
+  font-size: 0.78rem !important;
+}
+
+.vocab-mastery-counts {
+  gap: 5px !important;
+}
+
+.mastery-chip {
+  padding: 2px 8px !important;
+  font-size: 0.71rem !important;
+}
+
+.vocab-mastery-bar-track {
+  height: 5px !important;
+}
+
+.vocab-cramming-toolbar {
+  padding-top: 6px !important;
+  gap: 6px !important;
+}
+
+.cram-mode-pill {
+  padding: 4px 9px !important;
+  font-size: 0.74rem !important;
+}
+
+/* 2. Bỏ khung viền trắng nặng nề của thanh Chủ đề — biến thành dải pill nhẹ thanh thoát */
+.practice-topic-bar {
+  padding: 2px 4px !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  gap: 6px !important;
+}
+
+/* 3. Thu gọn Flashcard Toolbar thành 1 dải gọn nhẹ */
+.flashcard-toolbar {
+  padding: 6px 10px !important;
+  gap: 6px !important;
+  border-radius: 12px !important;
+  box-shadow: none !important;
+  margin-bottom: 10px !important;
+}
+
+.flashcard-toolbar .practice-secondary-btn,
+.flashcard-toolbar .flashcard-jump-select {
+  padding: 5px 9px !important;
+  font-size: 0.76rem !important;
+  min-height: 30px !important;
+}
+
+/* 4. Làm nổi bật chiếc Thẻ Lật là tâm điểm (Hero Card) & vừa khít màn hình laptop không cần cuộn */
+.flashcard-scene {
+  min-height: 270px !important;
+}
+
+.flashcard {
+  min-height: 270px !important;
+}
+
+.flashcard-face {
+  min-height: 270px !important;
+  padding: 22px 26px !important;
+  border-top: 3px solid var(--accent) !important;
+  border-radius: 20px !important;
+}
+
+#flashcard-question {
+  font-size: clamp(1.7rem, 3vw, 2.2rem) !important;
+  margin: 8px 0 4px !important;
+}
+
+.flashcard-controls {
+  margin-top: 10px !important;
+  gap: 8px !important;
+}
+
+.flashcard-controls button {
+  padding: 9px 12px !important;
+  font-size: 0.84rem !important;
+}
+
+.flashcard-srs-actions {
+  margin-top: 8px !important;
+  gap: 8px !important;
+}
+
+.srs-btn {
+  padding: 10px 14px !important;
+  font-size: 0.84rem !important;
+}
+
+
+/* ==========================================================================
+   QA Visual Bug Fixes — Hero-First Flashcard, Balanced Dictation & Real Chat Bubbles
+   ========================================================================== */
+
+/* BUG FIX 1: Đưa Thẻ lật lên TRÊN CÙNG (Hero-First), đẩy khung Tiến độ Sổ tay xuống dưới thẻ
+   để toàn bộ chiếc thẻ + nút Lật + nút Đã thuộc/Chưa thuộc nằm gọn 100% trong màn hình! */
+.practice-main {
+  display: flex !important;
+  flex-direction: column !important;
+  padding: 10px 18px 28px !important;
+  gap: 10px !important;
+}
+
+#analytics-dashboard-details { order: 0; }
+#practice-topic-bar { order: 1; }
+#quiz-mode-panel,
+#flashcard-mode-panel,
+#dictation-mode-panel,
+#sentence-mode-panel,
+#story-mode-panel,
+#practice-result-panel { order: 2; }
+#vocab-mastery-progress-card { order: 3; margin-top: 6px; }
+
+/* Flashcard Toolbar nằm gọn 1 hàng ngang tinh tế, status badge gọn gàng */
+.flashcard-toolbar {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 6px !important;
+  padding: 6px 10px !important;
+  margin-bottom: 10px !important;
+}
+
+.flashcard-enrich-status {
+  font-size: 0.72rem !important;
+  padding: 3px 8px !important;
+  border-radius: 999px !important;
+}
+
+/* BUG FIX 2: Sửa hàng 2 nút Từ trước / Từ tiếp ở tab Nghe & Gõ bị lệch 3 cột */
+#dictation-mode-panel .flashcard-controls {
+  display: grid !important;
+  grid-template-columns: 1fr 1fr !important;
+  gap: 10px !important;
+}
+
+/* BUG FIX 3: Áp dụng đúng class .story-turn-item cho bong bóng hội thoại 2 vai (Trái / Phải) */
+.story-dialogue-list {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+}
+
+.story-turn-item {
+  width: min(88%, 680px) !important;
+  border-radius: 16px !important;
+  padding: 13px 16px !important;
+  border: 1px solid var(--border-subtle) !important;
+  background: var(--bg-elevated) !important;
+  transition:
+    transform var(--dur-normal, 220ms) var(--ease-spring, cubic-bezier(0.22, 1, 0.36, 1)),
+    border-color 140ms ease,
+    box-shadow var(--dur-normal, 220ms) ease !important;
+}
+
+.story-turn-item:nth-child(odd) {
+  align-self: flex-start !important;
+  border-bottom-left-radius: 5px !important;
+}
+
+.story-turn-item:nth-child(even) {
+  align-self: flex-end !important;
+  border-bottom-right-radius: 5px !important;
+  background: color-mix(in oklab, var(--accent) 11%, var(--bg-elevated)) !important;
+  border-color: color-mix(in oklab, var(--accent) 32%, var(--border-subtle)) !important;
+}
+
+.story-turn-item:hover {
+  transform: translateY(-1.5px);
+  border-color: var(--accent) !important;
+  box-shadow: var(--interactive-glow-soft) !important;
+}
+
+/* BUG FIX 4: Chống vỡ chữ dọc (SMART / STUDY / • / ...) trên Header & chỉ gộp 1 hàng khi màn hình đủ rộng (>= 1340px) */
+.practice-header {
+  padding: 8px 16px !important;
+  gap: 8px 14px !important;
+}
+
+.practice-header-title {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.practice-eyebrow {
+  display: block;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  font-size: 0.66rem !important;
+  line-height: 1.2 !important;
+}
+
+.practice-header-title h1 {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  font-size: 0.96rem !important;
+  line-height: 1.3 !important;
+}
+
+@media (min-width: 1340px) {
+  .practice-header {
+    flex-wrap: nowrap !important;
+  }
+  .practice-header-brand {
+    flex: 0 1 240px !important;
+    min-width: 190px !important;
+  }
+  .practice-header-title h1 {
+    max-width: 200px !important;
+  }
+  .practice-header-tools {
+    flex: 0 0 auto !important;
+    flex-wrap: nowrap !important;
+    gap: 6px !important;
+  }
+  .mode-switch-btn {
+    padding: 6px 9px !important;
+    font-size: 0.76rem !important;
+  }
+}
+
+
+/* Smart Batch Selector for 15-500+ Vocabulary Roleplay */
+.story-batch-select {
+  min-height: 34px;
+  max-width: 190px;
+  padding: 5px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-card);
+  color: var(--text-main);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition: border-color 140ms ease, box-shadow 180ms ease;
+}
+
+.story-batch-select:hover {
+  border-color: var(--accent);
+}
+
+.story-batch-select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.story-batch-select[hidden] {
+  display: none !important;
+}

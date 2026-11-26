@@ -131,7 +131,12 @@ export function updateStoryPlaybackButtons() {
   const speakAllBtn = document.getElementById('story-speak-all-btn');
   const stopBtn = document.getElementById('stop-dialogue-btn');
   if (speakAllBtn) {
-    speakAllBtn.textContent = '🔊 Nghe cả đoạn';
+    const labelSpan = speakAllBtn.querySelector('span');
+    if (labelSpan) {
+      labelSpan.textContent = 'Nghe cả đoạn';
+    } else {
+      speakAllBtn.textContent = '🔊 Nghe cả đoạn';
+    }
     speakAllBtn.classList.remove('is-playing-stop');
   }
   if (stopBtn) {
